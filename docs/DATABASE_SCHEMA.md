@@ -2,15 +2,15 @@
 
 ## Overview
 
-The `ActiveRequests` table stores the **live state** of all granted access requests.
-It is the system of record used by ***Boundary*** to determine:
+The `ActiveRequests` table stores the live state of all granted access requests.
+It is the system of record used by Boundary to determine:
 
 - Which access grants are currently active
 - When access must be revoked
 - How to safely recover state after a bot crash or restart
 
-This table is **not an audit log**.  
-It only tracks **current and pending access grants**.
+This table is not an audit log.  
+It only tracks current and pending access grants.
 
 ---
 
@@ -24,7 +24,7 @@ It only tracks **current and pending access grants**.
 Each access request is uniquely identified by a generated `request_id`.
 This enables fast, idempotent lookups and safe state recovery.
 
-There is **no Sort Key** on the base table because each item represents
+There is no Sort Key on the base table because each item represents
 a single independent access request.
 
 ---
@@ -43,7 +43,7 @@ This index enables efficient discovery of expired access grants.
 
 #### Purpose
 
-The most frequent query executed by ***Boundary*** is:
+The most frequent query executed by Boundary is:
 
 > “Find all ACTIVE requests that have expired so access can be revoked.”
 
@@ -59,47 +59,50 @@ without scanning the entire table.
 
 ## Attributes
 
-| Attribute Name        | Type    | Description |
-|----------------------|---------|-------------|
-| `request_id`         | String  | Unique identifier for the access request |
-| `subject_id`         | String  | Group or user requesting access |
-| `rule_name`          | String  | Name of the access rule that allowed the request |
-| `ticket_id`          | String  | Approval or change-management reference |
-| `account_id`         | String  | AWS account where access was granted |
-| `permission_set`     | String  | AWS IAM Identity Center permission set |
-| `status`             | String  | `PENDING`, `ACTIVE`, or `REVOKED` |
-| `requested_at`       | Number  | Request creation time (epoch seconds) |
-| `expires_at`         | Number  | Time when access must be revoked |
-| `revoked_at`         | Number  | Time when access was actually revoked |
-| `approval_required`  | Boolean | Whether approval was required for this request |
+| Attribute Name       | Type   | Description |
+|---------------------|--------|-------------|
+| `request_id`        | String | Unique identifier for the access request |
+| `principal_id`      | String | CRITICAL: The User GUID (Identity Store ID) who received access |
+| `principal_type`    | String | Usually "USER" (Could be GROUP in rare cases) |
+| `eligible_group_id` | String | The Group ID that matched the rule (for auditing) |
+| `permission_set_arn`| String | CRITICAL: The ARN of the Permission Set (Immutable) |
+| `account_id`        | String | AWS account ID where access was granted |
+| `instance_arn`      | String | The SSO Instance ARN (Required for API calls) |
+| `status`            | String | PENDING, ACTIVE, REVOKED, ERROR |
+| `ticket_id`         | String | Approval or change-management reference |
+| `rule_id`           | String | ID of the rule from access_rules.yaml |
+| `requested_at`      | Number | Request creation time (epoch seconds) |
+| `expires_at`        | Number | Time when access must be revoked |
+| `revoked_at`        | Number | Time when access was actually revoked |
+| `ttl`               | Number | DynamoDB TTL attribute (e.g., expires_at + 90 days) for auto-deletion |
 
 ---
 
 ## Primary Access Patterns
 
 ### 1. Create Access Request
-- Insert new item with `status = PENDING` or `ACTIVE`
-- Populate `expires_at` based on policy constraints
+- Insert new item with status = PENDING or ACTIVE
+- Resolve Names to ARNs before inserting.
 
 ### 2. Recover After Bot Crash
-- Query `ExpirationIndex` for expired ACTIVE requests
-- Revoke access and update `status` to `REVOKED`
+- Query ExpirationIndex for expired ACTIVE requests
+- Revoke access and update status to REVOKED
 
 ### 3. Revoke Expired Access
-- Query `ExpirationIndex`
+- Query ExpirationIndex where status is ACTIVE and time < Now.
 - For each result:
-  - Revoke IAM Identity Center assignment
-  - Update `status` and set `revoked_at`
+  - Call sso-admin:DeleteAccountAssignment using principal_id and permission_set_arn.
+  - Update status to REVOKED and set revoked_at.
 
 ### 4. Idempotent Updates
-- All operations reference `request_id`
+- All operations reference request_id
 - Safe retries without duplicating access grants
 
 ---
 
 ## Design Principles
 
-- **Time-based state, not timers**
-- **Crash-safe by default**
-- **Optimized for least-privilege enforcement at scale**
-- **Designed for thousands of AWS accounts**
+- Time-based state, not timers
+- Crash-safe by default
+- Optimized for least-privilege enforcement at scale
+- Designed for thousands of AWS accounts
