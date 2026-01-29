@@ -1,0 +1,62 @@
+version: "1.0"
+
+settings:
+  default_action: deny
+  max_request_duration_hours: 12
+
+# Define who the actors are.
+# Mapping readable names to Identity Center Group IDs ensures
+# we don't break if a group is renamed in the Identity Provider.
+subjects:
+  groups:
+    developers:
+      id: "90673208-3b..." # Real AWS Identity Center Group ID
+      description: "Core App Developers"
+    security_admins:
+      id: "80673208-4c..."
+      description: "Cloud Security Team"
+
+rules:
+  # RULE 1: Staging Read Only
+  # Uses OU IDs for stability.
+  - id: "allow-dev-staging-ro"
+    description: "Developers can request ReadOnly on Staging OU"
+    subjects: ["developers"]
+    effect: allow
+    target:
+      selector: "ou_id"
+      ids: ["ou-rge5-12345"] # Using ID prevents breakage if OU is renamed
+    permission_set: "ReadOnlyAccess" # Must match Permission Set name in AWS
+    constraints:
+      max_duration_hours: 8
+      ticket_required: false
+
+  # RULE 2: Sandbox Admin
+  # Uses Tags for flexibility. Requires Approval.
+  # Added 'approvers' section to define WHERE the request goes.
+  - id: "allow-dev-sandbox-admin"
+    description: "Developers can request Admin on Sandbox accounts"
+    subjects: ["developers"]
+    effect: allow
+    target:
+      selector: "tag"
+      key: "Environment"
+      values: ["Sandbox", "Playground"]
+    permission_set: "AdministratorAccess"
+    constraints:
+      max_duration_hours: 1
+      ticket_required: true # Must provide a Jira/Linear ticket ID
+    approval:
+      required: true
+      approver_groups: ["security_admins"] # Points to subject defined above
+      channel: "#security-approvals" # Slack channel ID
+
+  # RULE 3: Explicit Deny (Optional, as default is deny, but good for clarity)
+  - id: "deny-dev-prod"
+    description: "Explicitly forbid developers from Production OUs"
+    subjects: ["developers"]
+    effect: deny
+    target:
+      selector: "ou_id"
+      ids: ["ou-rge5-99999"]
+    permission_set: "*"
