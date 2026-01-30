@@ -21,5 +21,6 @@ class PolicyEngine:
             # We store the entire YAML as a dictionary in self.config
             self.config = yaml.safe_load(file)
 
-    def evaluate(self, access_request):
-        pass
+    def evaluate(self, access_request: AccessRequest) -> EvaluationResult:
+        result = EvaluationResult(effect="DENY", reason="Denied by default policy.", rule_id=None)
+        return result
