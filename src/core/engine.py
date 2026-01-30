@@ -29,7 +29,7 @@ class PolicyEngine:
               rule_subjects = rule.get("subjects", [])
               if access_request.subject not in rule_subjects:
                 continue
-              rule_permission_set = rule.get("permission_set", " ")
+              rule_permission_set = rule.get("permission_set")
               if rule_permission_set != "*" and access_request.permission_set != rule_permission_set:
                 continue
 
