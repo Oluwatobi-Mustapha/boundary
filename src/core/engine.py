@@ -37,7 +37,7 @@ class PolicyEngine:
                 return name
         return None
 
-    def evaluate(self, access_request: AccessRequest) -> EvaluationResult:
+    def evaluate(self, access_request: AccessRequest, context: AWSAccountContext) -> EvaluationResult:
         """
         The Brain: Loops through all rules to see if the request is valid.
         """
