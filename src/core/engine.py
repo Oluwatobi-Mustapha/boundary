@@ -1,5 +1,12 @@
 import yaml
 from src.models.request import AccessRequest
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class EvaluationResult:
+    effect: str
+    reason: str
 
 class PolicyEngine:
     def __init__(self, config_path: str):
