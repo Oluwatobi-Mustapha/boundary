@@ -9,3 +9,6 @@ class PolicyEngine:
         with open(config_path, 'r') as file:
             # We store the entire YAML as a dictionary in self.config
             self.config = yaml.safe_load(file)
+
+    def evaluate(self, access_request):
+        pass
