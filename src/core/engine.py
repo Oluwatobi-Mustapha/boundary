@@ -36,6 +36,11 @@ class PolicyEngine:
             if data.get('id') == principal_id:
                 return name
         return None
+    
+    def _match_target(self, rule_target: dict, context: AWSAccountContext) -> bool:
+        return False
+
+
 
     def evaluate(self, access_request: AccessRequest, context: AWSAccountContext) -> EvaluationResult:
         """
