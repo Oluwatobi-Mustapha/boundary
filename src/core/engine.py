@@ -44,10 +44,17 @@ class PolicyEngine:
         if selector == "ou_id":
             rule_ou_ids = rule_target.get("ids", [])
             return any(ou_id in context.ou_path_ids for ou_id in rule_ou_ids)
-
-
-
-
+        
+        if selector == "tag":
+            rule_tags_key = rule_target.get("key")
+            rule_tags_allowed_values = rule_target.get("values", [])
+            if not rule_tags_key:
+                return False
+            if not rule_tags_allowed_values:
+                return False
+            actual_value = context.tags.get(rule_tags_key)
+            return actual_value in rule_tags_allowed_values
+        return False # This ensures unknown selectors never match
 
     def evaluate(self, access_request: AccessRequest, context: AWSAccountContext) -> EvaluationResult:
         """
