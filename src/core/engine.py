@@ -85,7 +85,11 @@ class PolicyEngine:
             if rule_perm != "*" and access_request.permission_set_arn != rule_perm:
                 continue
 
-            # TODO CHECK C: Target Account / OU
+            # CHECK C: Target Account / OU
+
+            if not self._match_target(rule.get("target", {}), context): 
+                continue
+            
             # This is the 'Hard Part' we are tackling next.
             # We need to verify if the requested account belongs to the OU/Tags in the rule.
             
