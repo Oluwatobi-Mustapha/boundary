@@ -24,11 +24,15 @@ class PolicyEngine:
     def evaluate(self, access_request: AccessRequest) -> EvaluationResult:
         result = EvaluationResult(effect="DENY", reason="Denied by default policy.", rule_id=None)
         rules = self.config.get("rules", [])
+
         for rule in rules:
               rule_subjects = rule.get("subjects", [])
               if access_request.subject not in rule_subjects:
                 continue
-              
+              rule_permission_set = rule.get("permission_set", " ")
+              if rule_permission_set != "*" and access_request.permission_set != rule_permission_set:
+                continue
+
               # TODO: check if rule matches access_request
               pass
     
