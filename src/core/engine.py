@@ -7,6 +7,10 @@ from typing import Optional
 class EvaluationResult:
     effect: str
     reason: str
+    rule_id: Optional[str] = None
+    approval_required: bool = False
+    approval_channel: Optional[str] = None
+    approver_group: Optional[str] = None
 
 class PolicyEngine:
     def __init__(self, config_path: str):
