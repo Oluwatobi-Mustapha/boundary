@@ -38,7 +38,14 @@ class PolicyEngine:
         return None
     
     def _match_target(self, rule_target: dict, context: AWSAccountContext) -> bool:
-        return False
+        selector = rule_target.get("selector")
+        if not selector:
+            return False
+        if selector == "ou_id":
+            rule_ou_ids = rule_target.get("ids", [])
+            return any(ou_id in context.ou_path_ids for ou_id in rule_ou_ids)
+
+
 
 
 
