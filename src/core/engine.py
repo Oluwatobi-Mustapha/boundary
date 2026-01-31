@@ -89,12 +89,12 @@ class PolicyEngine:
 
             if not self._match_target(rule.get("target", {}), context): 
                 continue
-            
-            # This is the 'Hard Part' we are tackling next.
-            # We need to verify if the requested account belongs to the OU/Tags in the rule.
-            
-            # If we reach this point, the rule matches the user and the permissions!
-            # We would then set result.effect = "ALLOW" and return.
-            pass
+            rule_effect = rule.get("effect", "").lower()
+            if rule_effect == "deny":
+                return EvaluationResult(
+                    effect = "DENY",
+                    rule_id = rule.get("id"),
+                    reason = rule.get("description", "Denied by matching rule.")
+                )
 
         return result
