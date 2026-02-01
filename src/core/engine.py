@@ -116,27 +116,29 @@ class PolicyEngine:
             ticket_required = constraints_cfg.get("ticket_required", False)
             if ticket_required and not access_request.ticket_id:
                 return EvaluationResult(effect="DENY", reason="Ticket required for this request.", rule_id=rule.get("id"))
-            
+                
+
             # Build a helpful reason (and mention capping if it happened)
             desc = rule.get("description", "Matched policy rule.")
             if was_capped:
+                
                 reason = f"{desc} Requested duration capped to {max_hours} hour(s) per policy."
             else:
                 reason = desc
                
             # Approval vs direct allow
             if req_approval:
-             return EvaluationResult(
-                effect="ALLOW",
-                reason=reason,
-                rule_id=rule.get("id"),
-                approval_required=True,
-                approval_channel=approval_channel,
-                approver_group=approver_group,
-                was_capped=was_capped,
-                effective_duration_hours=effective_hours,
-                effective_expires_at=effective_expires_at,
-             )
+                return EvaluationResult(
+                    effect="ALLOW",
+                    reason=reason,
+                    rule_id=rule.get("id"),
+                    approval_required=True,
+                    approval_channel=approval_channel,
+                    approver_group=approver_group,
+                    was_capped=was_capped,
+                    effective_duration_hours=effective_hours,
+                    effective_expires_at=effective_expires_at,
+                )
             return EvaluationResult(
                 effect="ALLOW",
                 reason=reason,
@@ -145,3 +147,4 @@ class PolicyEngine:
                 effective_duration_hours=effective_hours,
                 effective_expires_at=effective_expires_at,
             )
+        
