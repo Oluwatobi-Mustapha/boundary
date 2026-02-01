@@ -4,6 +4,7 @@ from src.models.aws_context import AWSAccountContext
 from dataclasses import dataclass
 from typing import Optional
 
+
 @dataclass
 class EvaluationResult:
     """
@@ -16,6 +17,10 @@ class EvaluationResult:
     approval_required: bool = False # Does a human need to click 'Approve'?
     approval_channel: Optional[str] = None # Slack channel for notifications
     approver_group: Optional[str] = None   # Which team is allowed to approve
+    # NEW: duration capping metadata
+    was_capped: bool = False
+    effective_duration_hours: Optional[float] = None
+    effective_expires_at: Optional[float] = None
 
 class PolicyEngine:
     def __init__(self, config_path: str):
@@ -94,7 +99,22 @@ class PolicyEngine:
                 return EvaluationResult(
                     effect = "DENY",
                     rule_id = rule.get("id"),
-                    reason = rule.get("description", "Denied by matching rule.")
+                    reason = rule.get("description", "Denied by matching rule."),
                 )
+            approval_cfg = rule.get("approval", {})
+            req_approval = approval_cfg.get("required", False)
+            approval_channel = approval_cfg.get("channel")
+            approver_groups = approval_cfg.get("approver_groups", [])
+            approver_group = approver_groups[0] if approver_groups else None
+            constraints_cfg = rule.get("constraints", {})
+            global_max_hours = self.config.get("settings", {}).get("max_request_duration_hours", 12)
+            max_hours = constraints_cfg.get("max_duration_hours", global_max_hours)
+            requested_hours = (access_request.expires_at - access_request.requested_at) / 3600
+            if requested_hours > max_hours:
+                return EvaluationResult(effect="DENY", reason="Requested duration exceeds max allowed hours.", rule_id=rule.get("id"))
+            ticket_required = constraints_cfg.get("ticket_required", False)
+            if ticket_required and not access_request.ticket_id:
+                return EvaluationResult(effect="DENY", reason="Ticket required for this request.", rule_id=rule.get("id"))
+            
 
         return result
