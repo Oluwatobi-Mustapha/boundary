@@ -44,6 +44,8 @@ class AWSOrganizationsAdapter:
             parent = parents[0]
             p_id = parent.get("Id")
             p_type = parent.get("Type")
+            if not p_id or not p_type:
+                raise AWSResourceNotFoundError(f"Hierarchy broken: parent missing Id/Type for {current_id}")
 
             # We insert at 0 so the Root always ends up at the start of the list
             ou_path_ids.insert(0, p_id)
