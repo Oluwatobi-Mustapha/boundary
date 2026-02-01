@@ -20,6 +20,10 @@ class AWSOrganizationsAdapter:
             parent_type = parent.get("Type")
             if not parent_id or not parent_type:
                 break
+            ou_path_ids.insert(0, parent_id)
+            if parent_type == "ROOT":
+                break
+           
 
 
 
