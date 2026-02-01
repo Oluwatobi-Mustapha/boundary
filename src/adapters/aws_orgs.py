@@ -9,7 +9,6 @@ class AWSResourceNotFoundError(Exception):
     In a security context, we prefer to crash than to make decisions on partial data.
     """
     pass
-
 class AWSOrganizationsAdapter:
     """
     The 'Hands' of the system.
@@ -85,10 +84,11 @@ class AWSOrganizationsAdapter:
                 if not next_token: 
                     break
             return {tag["Key"]: tag["Value"] for tag in all_tags}
-        except Exception:
-            # If tags cannot be retrieved, we return an empty dict.
-            # This triggers a 'Default Deny' for any rules relying on tag selectors.
-            return {}
+        except ClientError as e:
+            code = e.response.get("Error", {}).get("Code", "")
+            if code == 'AccessDeniedException':
+                return {}     
+            raise 
 
     def get_permission_set_name(self, instance_arn: str, ps_arn: str) -> str:
         """
