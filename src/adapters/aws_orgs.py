@@ -62,8 +62,10 @@ class AWSOrganizationsAdapter:
                 hit_root = True
                 break      
             current_id = p_id
+
         if not hit_root:
-                raise AWSResourceNotFoundError(f"Hierarchy broken: did not reach ROOT for account {account_id}")        
+            raise AWSResourceNotFoundError(f"Hierarchy broken: did not reach ROOT for account {account_id}") 
+               
         return ou_path_ids
     
     def get_account_tags(self, account_id: str) -> Dict[str, str]:
