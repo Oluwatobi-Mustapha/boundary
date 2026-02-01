@@ -1,8 +1,6 @@
----
-
 ## **Phase 2: AWS Adapter (Organizations) — Context Fact Gathering + Hardening**
 
-**Date: 01/02/26**
+**Date: 01-02-26**
 
 ### **Goal**
 
