@@ -23,6 +23,8 @@ class AWSOrganizationsAdapter:
             ou_path_ids.insert(0, parent_id)
             if parent_type == "ROOT":
                 break
+            current_id = parent_id
+
            
 
 
