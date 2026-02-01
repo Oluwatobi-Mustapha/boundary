@@ -24,6 +24,7 @@ class AWSOrganizationsAdapter:
             if parent_type == "ROOT":
                 break
             current_id = parent_id
+        return ou_path_ids
 
            
 
