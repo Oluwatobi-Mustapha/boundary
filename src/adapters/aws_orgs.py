@@ -4,4 +4,7 @@ from src.models.aws_context import AWSAccountContext
 
 
 class AWSOrganizationsAdapter:
-    def __init__(self, orgs_client=None): self.orgs = orgs_client or boto3.client("organizations")
+    def __init__(self, orgs_client=None): 
+        self.orgs = orgs_client or boto3.client("organizations")
+
+
