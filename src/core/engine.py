@@ -94,7 +94,7 @@ class PolicyEngine:
                 
             # Gate 2: Permission Set verification
             rule_perm = rule.get("permission_set")
-            if rule_perm != "*" and access_request.permission_set_arn != rule_perm:
+            if rule_perm != "*" and access_request.permission_set_name != rule_perm:
                 continue
 
             # Gate 3: Target Validation (Does this account belong to the OU/Tag?)
@@ -118,6 +118,13 @@ class PolicyEngine:
             rule_max = constraints_cfg.get("max_duration_hours", global_max)
             
             # Convert timestamps to hours for comparison
+            # Validate requested duration timestamps (fail closed)
+            if access_request.expires_at <= access_request.requested_at:
+                return EvaluationResult(
+                    effect="DENY",
+                    reason="Invalid request duration (expires_at must be after requested_at).",
+                    rule_id=rule.get("id"),
+                )
             requested_hours = (access_request.expires_at - access_request.requested_at) / 3600
             
             # AUTOMATIC CAPPING: Safety mechanism to prevent excessive access time
