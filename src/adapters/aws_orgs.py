@@ -30,6 +30,8 @@ class AWSOrganizationsAdapter:
         ou_path_ids: List[str] = []
         current_id = account_id
         allowed_types = {"ROOT", "ORGANIZATIONAL_UNIT"}
+
+        hit_root = False
         
         while True:
             # list_parents only returns the immediate level above. 
@@ -57,8 +59,8 @@ class AWSOrganizationsAdapter:
 
             # Exit condition: Once we hit the 'ROOT', the path is complete.
             if p_type == "ROOT":
+                hit_root = True
                 break
-            
             current_id = p_id
             
         return ou_path_ids
