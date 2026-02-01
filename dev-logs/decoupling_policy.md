@@ -1,12 +1,25 @@
+# Entry: Decoupling Policy Logic from AWS Side-Effects
 
-Entry: Decoupling Policy Logic from AWS Side-Effects.
+**Note:**  
+Decided to keep the `PolicyEngine` *pure*. Introduced an AWS Adapter pattern where the engine receives an `AWSAccountContext` object containing pre-fetched AWS facts (e.g., Tags, OU IDs) instead of calling `boto3` directly.  
+This design keeps policy evaluation fast, deterministic, and easy to unit test, while cleanly separating decision logic from AWS I/O.
 
-Note: "Decided to keep the PolicyEngine 'pure.' We are implementing an AWS Adapter pattern. The Engine will receive an 'AWSAccountContext' object containing pre-fetched facts (Tags, OU IDs) rather than calling boto3 directly. This ensures the engine is fast, testable, and deterministic."
+---
 
-Entry: Implementing Target Selection Logic.
+### Entry: Implementing Target Selection Logic
 
-Note: "Added _match_target helper. Supports both OU-based hierarchy matching and Tag-based attribute matching. Using short-circuiting logic (any()) for performance."
+**Note:**  
+Added the `_match_target` helper to encapsulate rule target evaluation logic.  
+Supports both:
+- OU-based hierarchical matching
+- Tag-based attribute matching  
 
-Entry: Implementing Target Resolution.
+Uses short-circuiting logic (`any()`) to optimize performance and fail fast on non-matching targets.
 
-Note: "Integrated AWSAccountContext into the evaluation loop. Added _match_target to support hierarchical (OU) and attribute-based (Tag) authorization."
+---
+
+### Entry: Implementing Target Resolution
+
+**Note:**  
+Integrated `AWSAccountContext` into the main policy evaluation loop.  
+Wired `_match_target` into rule processing to enable both hierarchical (OU) and attribute-based (Tag) authorization decisions, ensuring rules are only evaluated when their target scope matches the request context.
