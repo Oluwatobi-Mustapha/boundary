@@ -26,6 +26,7 @@ class AccessRequest:
     principal_id: str
     principal_type: str
     permission_set_arn: str
+    permission_set_name: str
     account_id: str
     instance_arn: str
     rule_id: str
