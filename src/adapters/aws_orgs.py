@@ -15,7 +15,13 @@ class AWSOrganizationsAdapter:
             parents = resp.get("Parents", [])
             if not parents:
                 break
-            
+            parent = parents[0]
+            parent_id = parent.get("Id")
+            parent_type = parent.get("Type")
+            if not parent_id or not parent_type:
+                break
+
+
 
 
 
