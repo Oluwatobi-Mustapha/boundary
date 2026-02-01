@@ -27,8 +27,11 @@ class AWSOrganizationsAdapter:
         return ou_path_ids
     
     def get_account_tags(self, account_id: str) -> Dict[str, str]:
+        resp = self.orgs.list_tags_for_resource(ResourceId=account_id)
+        tags = resp.get("Tags", [])
+       
+
         
-        pass
 
 
            
