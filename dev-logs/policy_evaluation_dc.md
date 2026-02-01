@@ -1,5 +1,4 @@
-
-**Phase 1: Policy Evaluation Decision Construction (Target Matching + Capping)**
+## Phase 1: Policy Evaluation Decision Construction (Target Matching + Capping)**
 **Date: 01/02/26**
 
 * **Extended the PolicyEngine interface to accept AWS facts** by updating `evaluate()` to take both `AccessRequest` and `AWSAccountContext`. This keeps the engine *pure* (no boto3 calls) and makes evaluation deterministic and testable.
