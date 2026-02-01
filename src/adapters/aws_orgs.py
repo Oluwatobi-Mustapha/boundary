@@ -31,7 +31,13 @@ class AWSOrganizationsAdapter:
         tags = resp.get("Tags", [])
         tag_dict = {tag["Key"]: tag["Value"] for tag in tags}
         return tag_dict
-       
+
+    def build_account_context(self, account_id: str) -> AWSAccountContext:
+        ou_path_ids = self.get_ou_path(account_id)
+        tags = self.get_account_tags(account_id)
+        return AWSAccountContext(ou_path_ids=ou_path_ids, tags=tags)
+    
+
 
         
 
