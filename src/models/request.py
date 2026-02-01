@@ -14,6 +14,7 @@ class AccessRequest:
         principal_id: The AWS Identity Center User GUID.
         principal_type: Usually 'USER'.
         permission_set_arn: The immutable ARN of the requested permission set.
+        permission_set_name: Human-readable name (e.g., ReadOnlyAccess) used for policy matching.
         account_id: The target 12-digit AWS Account ID.
         instance_arn: The ARN of the SSO instance.
         rule_id: The ID of the rule from access_rules.yaml that authorized this.
