@@ -70,11 +70,20 @@ class AWSOrganizationsAdapter:
         Input: [{'Key': 'Env', 'Value': 'Prod'}]
         Output: {'Env': 'Prod'}
         """
+        all_tags = []
+        next_token = None
         try:
-            # Note: ResourceId accepts the 12-digit Account ID for this call
-            resp = self.orgs.list_tags_for_resource(ResourceId=account_id)
-            tags = resp.get("Tags", [])
-            return {tag["Key"]: tag["Value"] for tag in tags}
+            while True:
+                # Note: ResourceId accepts the 12-digit Account ID for this call
+                if next_token: 
+                    resp = self.orgs.list_tags_for_resource(ResourceId=account_id, NextToken=next_token)
+                else:
+                    resp = self.orgs.list_tags_for_resource(ResourceId=account_id)
+                all_tags.extend(resp.get("Tags", []))
+                next_token = resp.get("NextToken")
+                if not next_token: 
+                    break
+            return {tag["Key"]: tag["Value"] for tag in all_tags}
         except Exception:
             # If tags cannot be retrieved, we return an empty dict.
             # This triggers a 'Default Deny' for any rules relying on tag selectors.
