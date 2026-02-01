@@ -1,5 +1,5 @@
 import boto3
-from typing import List, Dict, Optional
+from typing import List, Dict
 from src.models.aws_context import AWSAccountContext
 
 class AWSResourceNotFoundError(Exception):
