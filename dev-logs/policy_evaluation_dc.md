@@ -26,3 +26,7 @@
   * `python3 -m py_compile src/core/engine.py && pytest`
 
 * ***Policy Engine is complete and verified. Moving to the AWS Adapter implementation. Focus: translating hierarchical AWS Organizations structures into the flattened AWSAccountContext model.***
+## Improvement
+* ***Data Integrity: Added permission_set_name to AccessRequest to bridge the gap between AWS ARNs and human-readable YAML rules.***
+
+* ***Fail-Closed Logic: Implemented duration validation (expires_at > requested_at) to prevent logical errors in time calculation.***
