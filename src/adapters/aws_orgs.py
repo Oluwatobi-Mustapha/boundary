@@ -25,6 +25,11 @@ class AWSOrganizationsAdapter:
                 break
             current_id = parent_id
         return ou_path_ids
+    
+    def get_account_tags(self, account_id: str) -> Dict[str, str]:
+        
+        pass
+
 
            
 
