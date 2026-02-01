@@ -29,6 +29,7 @@ class AWSOrganizationsAdapter:
         """
         ou_path_ids: List[str] = []
         current_id = account_id
+        allowed_types = {"ROOT", "ORGANIZATIONAL_UNIT"}
         
         while True:
             # list_parents only returns the immediate level above. 
@@ -44,8 +45,12 @@ class AWSOrganizationsAdapter:
             parent = parents[0]
             p_id = parent.get("Id")
             p_type = parent.get("Type")
+
             if not p_id or not p_type:
                 raise AWSResourceNotFoundError(f"Hierarchy broken: parent missing Id/Type for {current_id}")
+        
+            if p_type not in allowed_types:
+                raise AWSResourceNotFoundError(f"Hierarchy broken: unexpected parent type {p_type} for {current_id}")
 
             # We insert at 0 so the Root always ends up at the start of the list
             ou_path_ids.insert(0, p_id)
