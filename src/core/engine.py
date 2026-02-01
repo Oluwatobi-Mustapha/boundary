@@ -110,11 +110,38 @@ class PolicyEngine:
             global_max_hours = self.config.get("settings", {}).get("max_request_duration_hours", 12)
             max_hours = constraints_cfg.get("max_duration_hours", global_max_hours)
             requested_hours = (access_request.expires_at - access_request.requested_at) / 3600
-            if requested_hours > max_hours:
-                return EvaluationResult(effect="DENY", reason="Requested duration exceeds max allowed hours.", rule_id=rule.get("id"))
+            effective_hours = min(requested_hours, max_hours)
+            was_capped = requested_hours > max_hours
+            effective_expires_at = access_request.requested_at + (effective_hours * 3600)
             ticket_required = constraints_cfg.get("ticket_required", False)
             if ticket_required and not access_request.ticket_id:
                 return EvaluationResult(effect="DENY", reason="Ticket required for this request.", rule_id=rule.get("id"))
             
-
-        return result
+            # Build a helpful reason (and mention capping if it happened)
+            desc = rule.get("description", "Matched policy rule.")
+            if was_capped:
+                reason = f"{desc} Requested duration capped to {max_hours} hour(s) per policy."
+            else:
+                reason = desc
+               
+            # Approval vs direct allow
+            if req_approval:
+             return EvaluationResult(
+                effect="ALLOW",
+                reason=reason,
+                rule_id=rule.get("id"),
+                approval_required=True,
+                approval_channel=approval_channel,
+                approver_group=approver_group,
+                was_capped=was_capped,
+                effective_duration_hours=effective_hours,
+                effective_expires_at=effective_expires_at,
+             )
+            return EvaluationResult(
+                effect="ALLOW",
+                reason=reason,
+                rule_id=rule.get("id"),
+                was_capped=was_capped,
+                effective_duration_hours=effective_hours,
+                effective_expires_at=effective_expires_at,
+            )
