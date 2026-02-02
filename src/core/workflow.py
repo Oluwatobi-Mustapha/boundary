@@ -15,3 +15,4 @@ class AccessWorkflow:
             instance_arn=request.instance_arn, 
             ps_arn=request.permission_set_arn
         )
+        context = self.adapter.build_account_context(request.account_id) 
