@@ -19,6 +19,7 @@ class AWSOrganizationsAdapter:
         # Dependency Injection allows us to pass 'Mock' clients during testing
         self.orgs = orgs_client or boto3.client("organizations")
         self.sso = sso_client or boto3.client("sso-admin")
+        self._ps_cache = {}
 
     def get_ou_path(self, account_id: str) -> List[str]:
         """
