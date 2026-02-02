@@ -101,11 +101,15 @@ class AWSOrganizationsAdapter:
         Placeholder for SSO Permission Set Name resolution.
         """
         # User requested to leave this for manual refinement
+        if ps_arn in  self._ps_cache:
+            return self._ps_cache[ps_arn]
         resp = self.sso.describe_permission_set(
             InstanceArn=instance_arn,
             PermissionSetArn=ps_arn
         )
-        return resp.get("PermissionSet", {}).get("Name", "")
+        name = resp.get("PermissionSet", {}).get("Name", "")
+        self._ps_cache[ps_arn] = name
+        return name
 
     def build_account_context(self, account_id: str) -> AWSAccountContext:
         """
