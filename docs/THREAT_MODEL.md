@@ -120,4 +120,3 @@ AWS API throttling or outages cause the system to crash or hang, leaving access 
 - AWS IAM propagation delays exceed this window.
 - Considered acceptable given platform constraints.
 
----
