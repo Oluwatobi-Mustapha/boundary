@@ -19,7 +19,7 @@ class MockAdapter:
         return "ReadOnlyAccess"
 
     def build_account_context(self, account_id) -> AWSAccountContext:
-        # We pretend this account is in the Staging OU
+        # pretend this account is in the Staging OU
         return AWSAccountContext(
             # SHOW FULL PATH: Root -> Infrastructure OU -> Staging OU
             ou_path_ids=["r-root-123", "ou-infra-456", "ou-rge5-12345"],
