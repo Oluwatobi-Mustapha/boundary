@@ -251,7 +251,7 @@ def print_verdict(
     # Evidence
     evidence = _stringify_dictlike(_safe_get(res, "context_evidence", None) or _safe_get(res, "evidence", None))
 
-    # ----- Redaction -----
+    # ----- Redaction ----
     def show_id(val: str, show: int = 12) -> str:
         if not val:
             return "-"
