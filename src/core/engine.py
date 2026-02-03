@@ -32,10 +32,20 @@ class PolicyEngine:
     It evaluates AccessRequests against YAML rules without talking to AWS directly.
     """
     def __init__(self, config_path: str):
-        """Loads and parses the central security policy."""
-        with open(config_path, 'r') as file:
-            # safe_load prevents YAML-based injection attacks
-            self.config = yaml.safe_load(file)
+        """
+        Loads and parses the central security policy.
+        Calculates a SHA256 hash of the file for audit integrity.
+        """
+        # 1. Open in 'rb' (Read Binary) mode so we get raw bytes for hashing
+        with open(config_path, 'rb') as file:
+            content = file.read()
+            
+            # 2. Calculate the Hash (Fingerprint)
+            self.policy_hash = hashlib.sha256(content).hexdigest()
+            
+            # 3. Parse the YAML
+            # safe_load is happy to read the 'content' bytes directly
+            self.config = yaml.safe_load(content)
 
     def _get_subject_name(self, principal_id: str) -> Optional[str]:
         """Maps AWS GUIDs (IDP) to readable names (developers, security_admins)."""
