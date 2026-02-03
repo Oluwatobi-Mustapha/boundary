@@ -2,7 +2,6 @@
 
 ## ADR-001: Runtime API vs. Infrastructure as Code for Access Grants
 
-**Status:** Accepted
 **Date:** 2026-01-28
 
 ### Context
@@ -22,7 +21,6 @@ We will use **Direct API Integration** (AWS Identity Center APIs) for granting a
 
 ## ADR-002: High-Integrity Structured Audit Outputs
 
-**Status:** Accepted
 **Date:** 2026-02-03
 
 ### Context
@@ -36,4 +34,5 @@ Security tools often output unstructured text logs, making it difficult to inges
 ### Consequences
 * **Positive:** Provides an irrefutable cryptographic link between a decision and the policy version used.
 * **Positive:** Enables automated pipeline gates via exit codes.
+
 * **Negative:** Requires stricter file handling (binary mode) in the Engine initialization.
