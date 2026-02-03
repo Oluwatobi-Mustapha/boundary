@@ -13,42 +13,54 @@ class MockAdapter:
     Returns hardcoded facts that match our 'Staging ReadOnly' rule.
     """
     def get_permission_set_name(self, instance_arn, ps_arn) -> str:
-        # We pretend AWS said this ARN = "ReadOnlyAccess"
         return "ReadOnlyAccess"
 
     def build_account_context(self, account_id) -> AWSAccountContext:
         # We pretend this account is in the Staging OU
         return AWSAccountContext(
-            ou_path_ids=["ou-rge5-12345"],
+            # SHOW FULL PATH: Root -> Infrastructure OU -> Staging OU
+            ou_path_ids=["r-root-123", "ou-infra-456", "ou-rge5-12345"],
             tags={"Environment": "Staging"}
         )
 
 if __name__ == "__main__":
-    # 1. Setup
+    # --- SETUP ---
     print("Initializing Engine...")
     engine = PolicyEngine("config/access_rules.yaml")
     adapter = MockAdapter()
     workflow = AccessWorkflow(engine, adapter)
 
-    # 2. Create a Fake Request
-    # We use the GROUP ID for 'developers' from YAML
+    # --- FAKE REQUEST ---
     req = AccessRequest(
-        request_id="test-123",
-        principal_id="90673208-3b...", # Matches 'developers' in YAML
+        request_id="test-audit-1",
+        principal_id="90673208-3b...", 
         principal_type="USER",
-        permission_set_arn="arn:aws:sso:::permissionSet/ssoins-123/ps-123", # Fake ARN
-        permission_set_name="", # Will be filled by workflow
+        permission_set_arn="arn:aws:sso:::permissionSet/ssoins-123/ps-123",
+        permission_set_name="", 
         account_id="123456789012",
         instance_arn="arn:aws:sso:::instance/ssoins-123",
         rule_id="unknown",
         requested_at=time.time(),
-        expires_at=time.time() + 3600, # Requesting 1 hour of access
+        expires_at=time.time() + 3600, 
     )
 
-    # 3. Run!
+    # --- EXECUTION ---
     print(f"Testing Request: {req.principal_id} -> Account {req.account_id}")
     result = workflow.handle_request(req)
 
-    # 4. Report (The Pretty Way)
+    # --- REPORTING (HUMAN) ---
     print_verdict(req, result)
+    
+    # --- REPORTING (MACHINE AUDIT) ---
+    # 2. Correct function call syntax (no colons)
+    logfile = log_audit_event(req, result)
+    print(f"\n[Audit Artifact Created]: {logfile}")
 
+    # --- EXIT CODES (Req 4: Fail-Closed) ---
+    # 3. Use res.effect to decide exit code
+    if result.effect == "ALLOW":
+        sys.exit(0)
+    elif result.effect == "DENY":
+        sys.exit(2)
+    else:
+        sys.exit(3) # Error
