@@ -1,9 +1,11 @@
+import sys
+import time
 from src.models.request import AccessRequest
 from src.models.aws_context import AWSAccountContext
 from src.core.engine import PolicyEngine
 from src.core.workflow import AccessWorkflow
 from src.ui.printer import print_verdict
-import time
+from src.ui.json_logger import log_audit_event
 
 class MockAdapter:
     """
