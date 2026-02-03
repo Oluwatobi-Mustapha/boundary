@@ -2,6 +2,7 @@ from src.models.request import AccessRequest
 from src.models.aws_context import AWSAccountContext
 from src.core.engine import PolicyEngine
 from src.core.workflow import AccessWorkflow
+from src.ui.printer import print_verdict
 import time
 
 class MockAdapter:
@@ -46,10 +47,6 @@ if __name__ == "__main__":
     print(f"Testing Request: {req.principal_id} -> Account {req.account_id}")
     result = workflow.handle_request(req)
 
-    # 4. Report
-    print("\n--- FINAL VERDICT ---")
-    print(f"Effect: {result.effect}")
-    print(f"Reason: {result.reason}")
-    print(f"Rule ID: {result.rule_id}")
-
+    # 4. Report (The Pretty Way)
+    print_verdict(req, result)
 
