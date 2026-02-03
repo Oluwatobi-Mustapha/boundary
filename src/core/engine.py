@@ -7,7 +7,8 @@ from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 
 # 1. Define the Engine Version (Semantic Versioning)
-VERSION = "0.1.0"@dataclass
+VERSION = "0.1.0"
+@dataclass
 class EvaluationResult:
     """
     The standardized 'Decision' object returned by the Engine.
@@ -111,6 +112,7 @@ class PolicyEngine:
         rules_checked_count = 0 # Counter
 
         for rule in rules:
+            rules_checked_count += 1
             # Match Subject
             if subject_name not in rule.get("subjects", []):
                 continue
@@ -142,7 +144,9 @@ class PolicyEngine:
                     rule_id=rule.get("id"),
                     reason=rule.get("description", "Denied by matching rule."),
                     policy_hash=self.policy_hash,
-                    context_evidence=evidence
+                    context_evidence=evidence,
+                    engine_version=VERSION,
+                    rules_processed=rules_checked_count
                 )
 
             constraints_cfg = rule.get("constraints", {})
@@ -175,24 +179,26 @@ class PolicyEngine:
             approval_cfg = rule.get("approval", {})
             req_approval = approval_cfg.get("required", False)
             
-            desc = rule.get("description", "Matched policy rule.")
+           # --- RETURN ALLOW ---
+            approval = rule.get("approval", {})
+            desc = rule.get("description", "Matched policy.")
             reason = f"{desc} Duration capped to {rule_max}h." if was_capped else desc
+
 
             return EvaluationResult(
                 effect="ALLOW",
                 reason=reason,
                 rule_id=rule.get("id"),
-                approval_required=req_approval,
-                approval_channel=approval_cfg.get("channel"),
-                approver_group=approval_cfg.get("approver_groups", [None])[0],
+                approval_required=approval.get("required", False),
+                approval_channel=approval.get("channel"),
+                approver_group=approval.get("approver_groups", [None])[0],
                 was_capped=was_capped,
                 effective_duration_hours=effective_hours,
                 effective_expires_at=effective_expires,
                 policy_hash=self.policy_hash,
-                context_evidence=evidence
+                engine_version=VERSION, 
+                context_evidence=evidence,
+                rules_processed=rules_checked_count
             )
     
-         
-        # If loop finishes with no match
-        result.rules_processed = rules_checked_count
         return result
