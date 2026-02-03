@@ -1,6 +1,7 @@
 # Threat Model
 
 **Last Updated:** 2026-02-03  
+
 **Scope:** Core Policy Engine, AWS Adapters, and State Management
 
 ---
