@@ -6,8 +6,8 @@ from src.models.aws_context import AWSAccountContext
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 
-
-@dataclass
+# 1. Define the Engine Version (Semantic Versioning)
+VERSION = "0.1.0"@dataclass
 class EvaluationResult:
     """
     The standardized 'Decision' object returned by the Engine.
@@ -16,15 +16,17 @@ class EvaluationResult:
     effect: str                    # Final verdict: 'ALLOW' or 'DENY'
     reason: str                    # Human-friendly explanation for the user
     
-    # --- Integrity Metadata (Req 3) ---
+    # --- Integrity Metadata ---
     policy_hash: str = "" 
+    engine_version: str = ""  # Which version of code made this decision?
     # capturing UTC time in ISO format automatically when created
     evaluated_at: str = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
     
-    # --- Evidence Context (Req 2) ---
+    # --- Evidence Context ---
     # Stores specific OUs or Tags that led to the match.
     # Using default_factory=dict is required for mutable types in dataclasses
     context_evidence: Dict[str, Any] = field(default_factory=dict)
+    rules_processed: int = 0 # Traceability (How many rules did we check?)
     
     rule_id: Optional[str] = None  # ID of the specific YAML rule that triggered this
     approval_required: bool = False # If True, the workflow must pause for a human
@@ -106,6 +108,8 @@ class PolicyEngine:
             )
         
         rules = self.config.get("rules", [])
+        rules_checked_count = 0 # Counter
+
         for rule in rules:
             # Match Subject
             if subject_name not in rule.get("subjects", []):
@@ -188,4 +192,7 @@ class PolicyEngine:
                 context_evidence=evidence
             )
     
+         
+        # If loop finishes with no match
+        result.rules_processed = rules_checked_count
         return result
