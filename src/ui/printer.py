@@ -281,7 +281,7 @@ def print_verdict(
         (ps_name, "white"),
         (" on ", ""),
         (account_id, "yellow"),
-        ("  •  expires ", "bold"),
+        ("  •  Expires ", "bold"),
         (expires_utc, "dim"),
     )
     console.print(headline)
