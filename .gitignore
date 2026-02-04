@@ -1,0 +1,125 @@
+--- Terraform / Infrastructure ---
+
+Local .terraform directories
+
+*/.terraform/
+
+.tfstate files
+
+*.tfstate
+.tfstate.
+
+Crash log files
+
+crash.log
+crash.*.log
+
+Exclude override files
+
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Include override files you do wish to add to version control using wildcard pattern extrapolation
+
+!example_override.tf
+
+Include build-time variables
+
+*.tfvars
+*.tfvars.json
+
+# Ignore variables for secrets (specifically)
+
+.terraform.tfvars.lock.hcl
+
+# Ignore CLI configuration files
+
+.terraformrc
+terraform.rc
+
+--- Python ---
+
+Byte-compiled / optimized / DLL files
+
+pycache/
+*.py[cod]
+*$py.class
+
+--- Distribution / packaging ---
+
+bin/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+--- Virtual Environments ---
+
+.venv/
+venv/
+ENV/
+env/
+pythonenv*/
+
+Jupyter Notebooks
+
+.ipynb_checkpoints
+
+pytest
+
+.pytest_cache/
+
+
+
+--- OS / IDE Specific ---
+
+
+macOS
+
+.DS_Store
+.AppleDouble
+.LSOverride
+
+Windows
+
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+--- VS Code ---
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+JetBrains (PyCharm)
+
+.idea/
+
+
+--- project Specific ---
+
+
+# Log files
+
+.log
+dev-logs/.log
+
