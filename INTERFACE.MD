@@ -2,8 +2,6 @@
 
 > Access requests happen in different places depending on who’s working and how urgent it is. This project supports three interfaces, all backed by the same policy engine and audit log.
 
-No matter the interface, the flow stays the same: evaluate policy, record the decision with context, then manage the access lifecycle.
-
 ---
 
 ## 🧰 CLI
@@ -38,4 +36,5 @@ Some tasks are hard to do well in chat or terminal output, especially when the q
 
 ---
 
-***Keeping them separate at the interface layer, while sharing the same policy engine and audit pipeline, helps prevent policy drift and reduces maintenance. The user experience changes, but the decision logic stays the same.***
+***Keeping them separate at the interface layer, while sharing the same policy engine and audit pipeline, helps prevent policy drift and reduces maintenance. The user experience changes, but the decision logic stays the same
+No matter the interface, the flow stays the same: evaluate policy, record the decision with context, then manage the access lifecycle..***
