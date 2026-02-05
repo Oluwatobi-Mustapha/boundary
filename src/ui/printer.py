@@ -277,9 +277,7 @@ def print_verdict(
 
     category = _category_for(effect, reason)
 
-    # =========================
     # CONTEXT
-    # =========================
     _divider(console, "EVALUATION CONTEXT")
     console.print(f" • Request ID:   [yellow]{request_id}[/yellow]")
     console.print(f" • Principal:    [yellow]{principal_display}[/yellow] [dim]({principal_type})[/dim]")
@@ -299,9 +297,9 @@ def print_verdict(
 
     console.print(f" • Policy Hash:  [yellow]{policy_hash_short}[/yellow]\n")
 
-    # =========================
+  
     # DECISION CONTEXT
-    # =========================
+   
     if evidence:
         _divider(console, "DECISION CONTEXT")
         ev_table = Table(
@@ -340,9 +338,9 @@ def print_verdict(
         console.print("")
 
 
-    # =========================
+   
     # DECISION
-    # =========================
+    
     _divider(console, "DECISION")
     table_box = box.SQUARE if console.is_terminal else box.SIMPLE
     table = Table(
@@ -379,9 +377,9 @@ def print_verdict(
     console.print(table)
     console.print("")
 
-    # =========================
+    
     # SUMMARY
-    # =========================
+   
     allowed = 1 if effect == "ALLOW" else 0
     denied = 1 if effect == "DENY" else 0
     errored = 1 if effect == "ERROR" else 0
@@ -392,9 +390,9 @@ def print_verdict(
         f"[black on yellow] {errored} Errors [/black on yellow]"
     )
 
-    # =========================
+    
     # ARTIFACT
-    # =========================
+    
     if artifact_path:
         _divider(console, "ARTIFACT")
         console.print(f"[dim]Audit Artifact saved to:[/dim] [cyan]{artifact_path}[/cyan]\n")
