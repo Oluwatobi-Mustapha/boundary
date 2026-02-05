@@ -16,7 +16,7 @@ The CLI exists because some workflows are best handled as code. Teams often want
 
 ## 💬 Slack
 
-**Who it’s for:** _application engineers, on call responders_  
+**Who it’s for:** _Application engineers, on call responders_  
 
 **Where it fits:** _requesting temporary access while actively working_
 
@@ -26,7 +26,7 @@ Slack is the “front door” for most day to day requests because it reduces st
 
 ## 📊 Web
 
-**Who it’s for:** _security engineers, managers, auditors_  
+**Who it’s for:** _Security engineers, managers, auditors_  
 
 **Where it fits:** _visibility, review, reporting, and operational control_
 
