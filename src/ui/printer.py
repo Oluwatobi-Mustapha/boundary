@@ -270,24 +270,12 @@ def print_verdict(
     # =========================
     _divider(console, "UTC")
     console.print(f"[green]Requested At:[/green] [dim]{now_utc}[/dim]")
-    console.print(f"[green]Evaluated At:[/green] [dim]{evaluated_utc}[/dim]\n")
+    console.print(f"[green]Evaluated At:[/green] [dim]{evaluated_utc}[/dim]")
+    console.print(f"[green]Expired At:[/green] [dim]{expires_utc}[/dim]\n")
 
-    headline = Text.assemble(
-        ("Decision: ", "bold"),
-        (effect, _effect_style(effect)),
-        ("  •  ", ""),
-        (principal_display, "yellow"),
-        (" -> ", ""),
-        (ps_name, "white"),
-        (" on ", ""),
-        (account_id, "yellow"),
-        ("  •  Expires ", "bold"),
-        (expires_utc, "dim"),
-    )
-    console.print(headline)
+    
 
     category = _category_for(effect, reason)
-    console.print(f"[dim]Category:[/dim] {category}\n")
 
     # =========================
     # CONTEXT
@@ -313,7 +301,7 @@ def print_verdict(
     console.print(f"   • Policy Hash:   [yellow]{policy_hash_short}[/yellow]\n")
 
     # =========================
-    # EVIDENCE
+    # DECISION CONTEXT
     # =========================
     if evidence:
         _divider(console, "DECISION CONTEXT")
@@ -354,7 +342,7 @@ def print_verdict(
 
 
     # =========================
-    # RESULT TABLE
+    # DECISION
     # =========================
     _divider(console, "DECISION")
     table_box = box.SQUARE if console.is_terminal else box.SIMPLE
@@ -395,13 +383,12 @@ def print_verdict(
     # =========================
     # SUMMARY
     # =========================
-    _divider(console, "SUMMARY")
     allowed = 1 if effect == "ALLOW" else 0
     denied = 1 if effect == "DENY" else 0
     errored = 1 if effect == "ERROR" else 0
 
     console.print(
-        f"[white on green] {allowed} Allowed [/white on green] "
+        f"[black on green] {allowed} Allowed [/black on green] "
         f"[white on red] {denied} Denied [/white on red] "
         f"[black on yellow] {errored} Errors [/black on yellow]"
     )
