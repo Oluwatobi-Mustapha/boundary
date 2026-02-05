@@ -1,5 +1,6 @@
-## Phase 1: Policy Evaluation Decision Construction (Target Matching + Capping)**
-**Date: 01-02-26**
+# Phase 1: Policy Evaluation Decision Construction (Target Matching + Capping)**
+
+## **Date: 01-02-26**
 
 * **Extended the PolicyEngine interface to accept AWS facts** by updating `evaluate()` to take both `AccessRequest` and `AWSAccountContext`. This keeps the engine *pure* (no boto3 calls) and makes evaluation deterministic and testable.
 * **Implemented `_match_target(rule_target, context)`** to support rule targeting at scale:
@@ -25,7 +26,9 @@
   * `python3 -m py_compile src/core/engine.py && pytest`
 
 * ***Policy Engine is complete and verified. Moving to the AWS Adapter implementation. Focus: translating hierarchical AWS Organizations structures into the flattened AWSAccountContext model.***
+
 ## Improvement
+
 * ***Data Integrity: Added permission_set_name to AccessRequest to bridge the gap between AWS ARNs and human-readable YAML rules.***
 
 * ***Fail-Closed Logic: Implemented duration validation (expires_at > requested_at) to prevent logical errors in time calculation.***

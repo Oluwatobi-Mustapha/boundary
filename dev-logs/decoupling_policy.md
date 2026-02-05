@@ -6,11 +6,12 @@ This design keeps policy evaluation fast, deterministic, and easy to unit test, 
 
 ---
 
-### Entry: Implementing Target Selection Logic
+## Entry: Implementing Target Selection Logic
 
 **Note:**  
 Added the `_match_target` helper to encapsulate rule target evaluation logic.  
 Supports both:
+
 - OU-based hierarchical matching
 - Tag-based attribute matching  
 
