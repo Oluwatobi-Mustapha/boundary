@@ -32,6 +32,7 @@ module "identity" {
 }
 ```
 
+
 ## Requirements
 
 - **AWS IAM Identity Center (SSO)** must be enabled in the region where this module is applied.
@@ -39,7 +40,7 @@ module "identity" {
   - `sso-admin:*`
   - `identitystore:*`
 
---
+
 
 ## Inputs
 
@@ -49,7 +50,7 @@ module "identity" {
 | `permission_sets` | `map(object)` | A map defining permission sets, session durations, and attached policies. |
 
 
---
+
 ## Outputs
 
 | Name | Type | Description |
