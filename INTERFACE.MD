@@ -2,10 +2,6 @@
 
 > Access requests happen in different places depending on who’s working and how urgent it is. This project supports three interfaces, all backed by the same policy engine and audit log.
 
-* **CLI** for automation and repeatable validation in CI
-* **Slack** for fast requests when engineers are in the middle of work
-* **Web** for oversight, review, and reporting
-
 No matter the interface, the flow stays the same: evaluate policy, record the decision with context, then manage the access lifecycle.
 
 ---
