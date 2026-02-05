@@ -1,17 +1,12 @@
 # Interface Strategy: CLI, Slack, and Web
 
-This project exposes the same authorization workflow through three interfaces. The goal is not to build three separate products, but to meet different users where they already work, while keeping one consistent policy engine underneath.
+Access requests happen in different places depending on who’s working and how urgent it is. This project supports three interfaces, all backed by the same policy engine and audit log.
 
-Each interface targets a different day to day workflow:
+- **CLI** for automation and repeatable validation in CI
+- **Slack** for fast requests when engineers are in the middle of work
+- **Web** for oversight, review, and reporting
 
-- **CLI** for engineers who want something scriptable and easy to run locally or in CI
-- **Slack** for fast, low friction access requests during active work
-- **Web** for visibility, review, and audit workflows that benefit from a dashboard
-
-The interfaces share the same core behavior:
-- evaluate an access request against policy
-- record decisions and context for auditing
-- support revocation and lifecycle management
+No matter the interface, the flow stays the same: evaluate policy, record the decision with context, then manage the access lifecycle.
 
 ---
 
@@ -41,7 +36,6 @@ Design choices:
 - The bot should return a clear decision and the next step, without requiring users to understand policy internals.
 - Slack is also a good place to enforce consistency: required fields, approvals, ticket links, and time bounds.
 
-Slack is not meant to be an audit dashboard. It is meant to be the workflow trigger.
 
 ---
 
@@ -72,4 +66,4 @@ Using three interfaces is a practical response to how access requests happen in 
 - **Slack** supports speed and adoption for everyday requests.
 - The **Web** supports oversight and audit workflows.
 
-Keeping them separate at the interface layer, while sharing the same policy engine and audit pipeline, helps prevent policy drift and reduces maintenance. The user experience changes, but the decision logic stays the same.
+***Keeping them separate at the interface layer, while sharing the same policy engine and audit pipeline, helps prevent policy drift and reduces maintenance. The user experience changes, but the decision logic stays the same.***
