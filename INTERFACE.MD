@@ -39,4 +39,4 @@ Some tasks are hard to do well in chat or terminal output, especially when the q
 
 ---
 
-***Keeping them separate at the interface layer, while sharing the same policy engine and audit pipeline, helps prevent policy drift and reduces maintenance. The user experience changes, but the decision logic stays the same.***
+***The user experience changes, but the decision logic stays the same.***
