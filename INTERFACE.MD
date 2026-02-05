@@ -39,4 +39,4 @@ Some tasks are hard to do well in chat or terminal output, especially when the q
 
 ---
 
-***The user experience changes, but the decision logic stays the same.***
+***In short: the User experience changes, but the decision logic stays the same.***
