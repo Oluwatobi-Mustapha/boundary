@@ -30,7 +30,7 @@ module "identity" {
     }
   }
 }
-
+```
 ## Requirements
 
 - **AWS IAM Identity Center (SSO)** must be enabled in the region where this module is applied.
