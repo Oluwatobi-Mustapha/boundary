@@ -281,24 +281,23 @@ def print_verdict(
     # CONTEXT
     # =========================
     _divider(console, "EVALUATION CONTEXT")
-    console.print(f"   • Request ID:    [yellow]{request_id}[/yellow]")
-    console.print(f"   • Principal:     [yellow]{principal_display}[/yellow] [dim]({principal_type})[/dim]")
-    console.print(f"   • Account:       [yellow]{account_id}[/yellow]")
-    console.print(f"   • Instance ARN:  [yellow]{instance_arn_display}[/yellow]")
-    console.print(f"   • Requested At:  [yellow]{requested_utc}[/yellow]")
+    console.print(f" • Request ID:   [yellow]{request_id}[/yellow]")
+    console.print(f" • Principal:    [yellow]{principal_display}[/yellow] [dim]({principal_type})[/dim]")
+    console.print(f" • Account:      [yellow]{account_id}[/yellow]")
+    console.print(f" • Instance ARN: [yellow]{instance_arn_display}[/yellow]")
 
     if correlation_id:
-        console.print(f"   • Correlation:   [yellow]{correlation_id}[/yellow]")
+        console.print(f" • Correlation: [yellow]{correlation_id}[/yellow]")
     if decision_id:
-        console.print(f"   • Decision ID:   [yellow]{decision_id}[/yellow]")
+        console.print(f" • Decision ID: [yellow]{decision_id}[/yellow]")
     if matched_rule:
-        console.print(f"   • Matched Rule:  [yellow]{matched_rule}[/yellow]")
+        console.print(f" • Matched Rule: [yellow]{matched_rule}[/yellow]")
     if engine_version:
-        console.print(f"   • Engine:        [yellow]{engine_version}[/yellow]")
+        console.print(f" • Engine:       [yellow]{engine_version}[/yellow]")
     if policy_version:
-        console.print(f"   • Policy:        [yellow]{policy_version}[/yellow]")
+        console.print(f" • Policy:   [yellow]{policy_version}[/yellow]")
 
-    console.print(f"   • Policy Hash:   [yellow]{policy_hash_short}[/yellow]\n")
+    console.print(f" • Policy Hash:  [yellow]{policy_hash_short}[/yellow]\n")
 
     # =========================
     # DECISION CONTEXT
