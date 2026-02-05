@@ -2,7 +2,6 @@
 
 > Access requests happen in different places depending on who’s working and how urgent it is. This Security product supports three interfaces, all backed by the same policy engine and audit log.
 
----
 
 ## 🧰 CLI
 
