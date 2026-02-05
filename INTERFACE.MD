@@ -6,7 +6,7 @@
 
 ## 🧰 CLI
 
-**Who it’s for: > ** DevOps engineers, platform teams, CI pipelines  
+**Who it’s for:** > DevOps engineers, platform teams, CI pipelines  
 **Where it fits:** local debugging, automated checks, repeatable workflows
 
 The CLI exists because some workflows are best handled as code. Teams often want to validate policy decisions before applying changes, run checks in CI, or execute bulk operations during migrations. A CLI is the most reliable way to make the system scriptable and composable.
