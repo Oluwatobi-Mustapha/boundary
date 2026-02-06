@@ -16,6 +16,24 @@ This environment exists to:
 
 ---
 
+## Configuration
+
+This root expects a `terraform.tfvars` file.
+
+A safe template is provided:
+
+- `terraform.tfvars.example` (committed)
+
+To run locally:
+
+```bash
+cp terraform.tfvars.example terraform.tfvars
+```
+
+***Then edit `terraform.tfvars` to match your environment. This file is ignored by Git and should not be committed.***
+
+---
+
 ## Apply Instructions
 
 Run Terraform in the following order:
