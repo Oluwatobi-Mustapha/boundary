@@ -7,10 +7,10 @@
 
 terraform {
   backend "s3" {
-    bucket         = "REPLACE_WITH_BOOTSTRAP_BUCKET_NAME"
+    bucket         = "boundary-tf-state-20260206184156145600000001"
     key            = "envs/dev/terraform.tfstate"
     region         = "us-east-1"
-    dynamodb_table = "REPLACE_WITH_BOOTSTRAP_LOCK_TABLE_NAME"
+    dynamodb_table = "boundary-tf-locks"
     encrypt        = true
   }
-}
+}   
