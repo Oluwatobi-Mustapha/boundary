@@ -1,0 +1,57 @@
+# ------------------------------------------------------------------------------
+# terraform.tfvars.example (DEV)
+#
+# How to use:
+# 1) Copy this file to terraform.tfvars:
+#      cp terraform.tfvars.example terraform.tfvars
+#
+# 2) Edit terraform.tfvars to match your org:
+#    - Rename groups to match your naming convention
+#    - Add/remove permission sets
+#    - Adjust session_duration limits (PT1H, PT2H, PT4H, etc)
+#
+# 3) Run Terraform from this folder:
+#      terraform init
+#      terraform plan
+#      terraform apply
+#
+# Notes:
+# - This module expects AWS-managed policy ARNs in managed_policies.
+# - Do NOT commit your real terraform.tfvars. Keep it local.
+# ------------------------------------------------------------------------------
+
+# 1) Groups to create in AWS Identity Store
+# Naming tip: use a consistent prefix like "Boundary-" so they are easy to find.
+groups = [
+  "Boundary-Developers",
+  "Boundary-Security-Admins",
+  "Boundary-Auditors"
+]
+
+# 2) Permission Sets to create in IAM Identity Center
+# Key = Permission Set name as it will appear in AWS SSO.
+permission_sets = {
+  "ReadOnlyAccess" = {
+    description      = "Read-only access for troubleshooting"
+    session_duration = "PT4H" # Example: 4 hours for Dev
+    managed_policies = [
+      "arn:aws:iam::aws:policy/ReadOnlyAccess"
+    ]
+  }
+
+  "AdministratorAccess" = {
+    description      = "Break-glass admin access (High Risk)"
+    session_duration = "PT1H" # Keep short for safety
+    managed_policies = [
+      "arn:aws:iam::aws:policy/AdministratorAccess"
+    ]
+  }
+
+  "PowerUserAccess" = {
+    description      = "Power User access excluding IAM management"
+    session_duration = "PT2H"
+    managed_policies = [
+      "arn:aws:iam::aws:policy/PowerUserAccess"
+    ]
+  }
+}
