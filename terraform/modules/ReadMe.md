@@ -32,7 +32,6 @@ module "identity" {
 }
 ```
 
-
 ## Requirements
 
 - **AWS IAM Identity Center (SSO)** must be enabled in the region where this module is applied.
@@ -40,20 +39,16 @@ module "identity" {
   - `sso-admin:*`
   - `identitystore:*`
 
-
-
 ## Inputs
 
-| Name | Type | Description |
-|------|------|-------------|
-| `groups` | `list(string)` | A list of group names to create in the Identity Store. |
-| `permission_sets` | `map(object)` | A map defining permission sets, session durations, and attached policies. |
-
-
+| Name              | Type           | Description                                                               |
+|-------------------|----------------|---------------------------------------------------------------------------|
+| `groups`          | `list(string)` | A list of group names to create in the Identity Store.                    |
+| `permission_sets` | `map(object)`  | A map defining permission sets, session durations, and attached policies. |
 
 ## Outputs
 
-| Name | Type | Description |
-|------|------|-------------|
-| `permission_set_arns` | `map(string)` | Map of Permission Set Name → ARN. |
-| `group_ids` | `map(string)` | Map of Group Name → Identity Store ID. |
+| Name                  | Type          | Description                            |
+|-----------------------|---------------|----------------------------------------|
+| `permission_set_arns` | `map(string)` | Map of Permission Set Name → ARN.      |
+| `group_ids`           | `map(string)` | Map of Group Name → Identity Store ID. |
