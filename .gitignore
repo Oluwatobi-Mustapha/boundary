@@ -39,6 +39,12 @@ Include build-time variables
 .terraformrc
 terraform.rc
 
+# Terraform working dir (NEVER commit)
+**/.terraform/**
+
+# Keep dependency lock files
+!.terraform.lock.hcl
+
 --- Python ---
 
 Byte-compiled / optimized / DLL files
