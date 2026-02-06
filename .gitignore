@@ -123,3 +123,25 @@ JetBrains (PyCharm)
 .log
 dev-logs/.log
 
+# Local .terraform directories
+**/.terraform/*
+# Terraform lock file (keep it)
+!.terraform.lock.hcl
+
+# Terraform state files
+*.tfstate
+*.tfstate.*
+
+# Crash log files
+crash.log
+crash.*.log
+
+# Override files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# CLI config files
+.terraformrc
+terraform.rc
