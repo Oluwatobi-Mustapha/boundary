@@ -6,10 +6,23 @@
 data "aws_ssoadmin_instances" "this" {}
 
 locals {
-  sso_instance_arn  = tolist(data.aws_ssoadmin_instances.this.arns)[0]
-  identity_store_id = tolist(data.aws_ssoadmin_instances.this.identity_store_ids)[0]
+  # Use try() so we don't crash with "Invalid index" when Identity Center isn't enabled.
+  sso_instance_arn  = try(tolist(data.aws_ssoadmin_instances.this.arns)[0], null)
+  identity_store_id = try(tolist(data.aws_ssoadmin_instances.this.identity_store_ids)[0], null)
 }
 
+# Fail fast with a clear message if Identity Center isn't enabled in this account/region.
+resource "null_resource" "require_identity_center" {
+  lifecycle {
+    precondition {
+      condition     = local.sso_instance_arn != null && local.identity_store_id != null
+      error_message = <<-EOT
+        IAM Identity Center (SSO) is not enabled in this AWS account/region, or you are targeting the wrong region.
+        Please, enable IAM Identity Center in the AWS Console for this region (or update your provider region) and re-run Terraform.
+      EOT
+    }
+  }
+}
 # ------------------------------------------------------------------------------
 # 1. PERMISSION SETS
 # ------------------------------------------------------------------------------
