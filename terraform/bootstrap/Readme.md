@@ -33,3 +33,4 @@ Run initialization:
 
 ```bash
 terraform init
+```
