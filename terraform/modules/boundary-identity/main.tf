@@ -2,44 +2,27 @@
 # DATA LOOKUPS
 # ------------------------------------------------------------------------------
 # Automatically find the Single Sign-On Instance ARN and Identity Store ID.
-# We select the Identity Center instance owned by the *current* AWS account.
+# We assume there is only one instance (standard for AWS Organizations).
 data "aws_ssoadmin_instances" "this" {}
-data "aws_caller_identity" "current" {}
 
 locals {
-  matching_instances = [
-    for idx, owner in data.aws_ssoadmin_instances.this.owner_account_ids : {
-      instance_arn      = data.aws_ssoadmin_instances.this.arns[idx]
-      identity_store_id = data.aws_ssoadmin_instances.this.identity_store_ids[idx]
-      owner_account_id  = owner
-    }
-    if owner == data.aws_caller_identity.current.account_id
-  ]
-
-  # Safe extraction (avoids invalid index) + deterministic selection by owner account
-  sso_instance_arn  = try(local.matching_instances[0].instance_arn, null)
-  identity_store_id = try(local.matching_instances[0].identity_store_id, null)
+  # Use try() so we don't crash with "Invalid index" when Identity Center isn't enabled.
+  sso_instance_arn  = try(tolist(data.aws_ssoadmin_instances.this.arns)[0], null)
+  identity_store_id = try(tolist(data.aws_ssoadmin_instances.this.identity_store_ids)[0], null)
 }
 
-# Fail fast with a clear message if we can't deterministically select the right instance.
+# Fail fast with a clear message if Identity Center isn't enabled in this account/region.
 resource "null_resource" "require_identity_center" {
   lifecycle {
     precondition {
-      condition     = length(local.matching_instances) == 1
+      condition     = local.sso_instance_arn != null && local.identity_store_id != null
       error_message = <<-EOT
-        Unable to select a unique IAM Identity Center instance for this AWS account.
-
-        Current account: ${data.aws_caller_identity.current.account_id}
-        Matching instances found: ${length(local.matching_instances)}
-
-        Fix:
-        - Run Terraform from the account that administers IAM Identity Center (management or delegated admin), OR
-        - Remove/disable extra Identity Center instances so exactly one is owned by this account.
+        IAM Identity Center (SSO) is not enabled in this AWS account/region, or you are targeting the wrong region.
+        Please, enable IAM Identity Center in the AWS Console for this region (or update your provider region) and re-run Terraform.
       EOT
     }
   }
 }
-
 # ------------------------------------------------------------------------------
 # 1. PERMISSION SETS
 # ------------------------------------------------------------------------------
