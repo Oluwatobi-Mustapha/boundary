@@ -5,11 +5,6 @@ import argparse
 import logging
 from typing import Optional
 
-# --- PATH FIX ---
-# This ensures we can import from 'src' even when running the script from inside 'src'
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-# ----------------
-
 # 1. THE IMPORTS
 from src.core.engine import PolicyEngine
 from src.core.workflow import AccessWorkflow
@@ -28,6 +23,7 @@ def main():
     parser.add_argument("--duration", type=float, default=1.0, help="Requested duration in hours")
     parser.add_argument("--ticket", help="Jira/ServiceNow Ticket ID (if required)")
     parser.add_argument("--debug", action="store_true", help="Enable verbose logging")
+    parser.add_argument("--dynamo-table", help="DynamoDB table name used to track active requests (optional for now)")
     
     args = parser.parse_args()
 
