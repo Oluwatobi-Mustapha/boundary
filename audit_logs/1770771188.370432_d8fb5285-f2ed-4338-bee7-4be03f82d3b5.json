@@ -1,0 +1,40 @@
+{
+  "schema_version": "1.1",
+  "timestamp": "2026-02-11T00:53:11.228497+00:00",
+  "correlation_id": "d8fb5285-f2ed-4338-bee7-4be03f82d3b5",
+  "engine_metadata": {
+    "version": "",
+    "policy_hash": "6034a07109d208d9f024fda477275da1381db17e080fd2745d522a956530483b",
+    "rules_processed": 0
+  },
+  "request": {
+    "request_id": "d8fb5285-f2ed-4338-bee7-4be03f82d3b5",
+    "principal_id": "34284498-7071-70c7-63fa-2e448ffe313d",
+    "principal_type": "GROUP",
+    "permission_set_arn": "arn:aws:sso:::permissionSet/ssoins-7223ecfa336a1cfc/ps-3689737f1d2217f8",
+    "permission_set_name": "ReadOnlyAccess",
+    "account_id": "037302670236",
+    "instance_arn": "arn:aws:sso:::instance/ssoins-7223ecfa336a1cfc",
+    "rule_id": "unknown",
+    "status": "PENDING",
+    "ticket_id": null,
+    "requested_at": "2026-02-11T00:53:08.370432+00:00",
+    "expires_at": "2026-02-11T01:53:08.370432+00:00"
+  },
+  "result": {
+    "effect": "DENY",
+    "reason": "Denied by default policy.",
+    "policy_hash": "6034a07109d208d9f024fda477275da1381db17e080fd2745d522a956530483b",
+    "engine_version": "",
+    "evaluated_at": "2026-02-11T00:53:11.228497+00:00",
+    "context_evidence": {},
+    "rules_processed": 0,
+    "rule_id": null,
+    "approval_required": false,
+    "approval_channel": null,
+    "approver_group": null,
+    "was_capped": false,
+    "effective_duration_hours": null,
+    "effective_expires_at": null
+  }
+}

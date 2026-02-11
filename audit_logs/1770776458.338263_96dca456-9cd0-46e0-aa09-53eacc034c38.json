@@ -1,0 +1,48 @@
+{
+  "schema_version": "1.1",
+  "timestamp": "2026-02-11T02:21:01.140596+00:00",
+  "correlation_id": "96dca456-9cd0-46e0-aa09-53eacc034c38",
+  "engine_metadata": {
+    "version": "0.1.0",
+    "policy_hash": "6ae69fcfa55c01610b2852a0b431fa963ecd6b3b510c499c1b6104fadf3674e7",
+    "rules_processed": 1
+  },
+  "request": {
+    "request_id": "96dca456-9cd0-46e0-aa09-53eacc034c38",
+    "principal_id": "34284498-7071-70c7-63fa-2e448ffe313d",
+    "principal_type": "GROUP",
+    "permission_set_arn": "arn:aws:sso:::permissionSet/ssoins-7223ecfa336a1cfc/ps-3689737f1d2217f8",
+    "permission_set_name": "ReadOnlyAccess",
+    "account_id": "037302670236",
+    "instance_arn": "arn:aws:sso:::instance/ssoins-7223ecfa336a1cfc",
+    "rule_id": "unknown",
+    "status": "PENDING",
+    "ticket_id": null,
+    "requested_at": "2026-02-11T02:20:58.338263+00:00",
+    "expires_at": "2026-02-11T03:20:58.338263+00:00"
+  },
+  "result": {
+    "effect": "ALLOW",
+    "reason": "Developers can request ReadOnly on Staging OU",
+    "policy_hash": "6ae69fcfa55c01610b2852a0b431fa963ecd6b3b510c499c1b6104fadf3674e7",
+    "engine_version": "0.1.0",
+    "evaluated_at": "2026-02-11T02:21:01.140596+00:00",
+    "context_evidence": {
+      "matched_selector": "ou_id",
+      "account_ou_path": [
+        "r-9e0f",
+        "ou-9e0f-06fgnz07"
+      ],
+      "account_tags": {},
+      "principal_group": "developers"
+    },
+    "rules_processed": 1,
+    "rule_id": "allow-dev-staging-ro",
+    "approval_required": false,
+    "approval_channel": null,
+    "approver_group": null,
+    "was_capped": false,
+    "effective_duration_hours": 1.0,
+    "effective_expires_at": "2026-02-11T03:20:58.338263+00:00"
+  }
+}
