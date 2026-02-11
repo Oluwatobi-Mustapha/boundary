@@ -95,22 +95,26 @@ class AWSOrganizationsAdapter:
             if code == 'AccessDeniedException':
                 return {}     
             raise 
-
     def get_permission_set_name(self, instance_arn: str, ps_arn: str) -> str:
         """
-        Placeholder for SSO Permission Set Name resolution.
+        Resolves an SSO Permission Set ARN to its human-readable Name.
+        Cached to avoid repeated DescribePermissionSet calls.
         """
-        # User requested to leave this for manual refinement
-        if ps_arn in  self._ps_cache:
-            return self._ps_cache[ps_arn]
+        cache_key = f"{instance_arn}:{ps_arn}"
+
+        if cache_key in self._ps_cache:
+             return self._ps_cache[cache_key]
+         
         resp = self.sso.describe_permission_set(
             InstanceArn=instance_arn,
             PermissionSetArn=ps_arn
         )
         name = resp.get("PermissionSet", {}).get("Name", "")
-        self._ps_cache[ps_arn] = name
-        return name
 
+        self._ps_cache[cache_key] = name
+        return name
+           
+    
     def build_account_context(self, account_id: str) -> AWSAccountContext:
         """
         Orchestrator: Gathers OUs and Tags to create a full 'Fact' model.
