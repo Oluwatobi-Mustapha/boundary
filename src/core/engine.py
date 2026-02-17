@@ -95,9 +95,10 @@ class PolicyEngine:
         # PRINCIPLE: Default Deny (Fail-Safe)
         # We initialize with the current policy hash so even Denials are audited
         result = EvaluationResult(
-            effect="DENY", 
+            effect="DENY",
             reason="Denied by default policy.",
-            policy_hash=self.policy_hash
+            policy_hash=self.policy_hash,
+            engine_version=VERSION
         )
         
         subject_name = self._get_subject_name(access_request.principal_id)
