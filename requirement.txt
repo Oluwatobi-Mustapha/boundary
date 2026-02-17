@@ -1,4 +1,3 @@
-PyYAML == 6.0.2
-boto3
-rich
-AWS CLI
+boto3>=1.34.0
+PyYAML>=6.0.1
+rich>=13.7.0
