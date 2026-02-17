@@ -12,12 +12,13 @@ from src.adapters.aws_orgs import AWSOrganizationsAdapter
 from src.adapters.state_store import StateStore
 
 # --- LOGGING CONFIGURATION ---
-# We configure this globally so it applies to both CLI and Lambda contexts.
+# We configure this globally so it applies to both CLI and Lambda contexts.explicitly set logger.setLevel(logging.INFO)
 logger = logging.getLogger()
 
 # 1. FORCE the log level to INFO. 
 #    AWS Lambda defaults to WARNING, which swallows our heartbeat logs.
-logger.setLevel(logging.INFO)
+log_level = os.environ.get("LOG_LEVEL", "INFO").upper()
+logger.setLevel(getattr(logging, log_level))
 
 # 2. Add a handler only if none exists (Prevent duplicate logs in CLI).
 #    In Lambda, a handler already exists, so this block is skipped, 
