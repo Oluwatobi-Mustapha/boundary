@@ -17,3 +17,11 @@ variable "permission_sets" {
     managed_policies = list(string)
   }))
 }
+
+# --- NEW: SECRETS PASS-THROUGH ---
+variable "boundary_secrets" {
+  description = "Map of configuration secrets (Group IDs, OU IDs) to pass to the Lambda environment"
+  type        = map(string)
+  default     = {}
+  sensitive   = true # Hides values from CLI output (Plan/Apply logs)
+}
