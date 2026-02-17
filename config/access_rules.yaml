@@ -5,35 +5,31 @@ settings:
   max_request_duration_hours: 12
 
 # Define who the actors are.
-# Mapping readable names to Identity Center Group IDs ensures
-# we don't break if a group is renamed in the Identity Provider.
+# Secrets are now injected via Environment Variables.
 subjects:
   groups:
     developers:
-      id: "90673208-3b..." # Real AWS Identity Center Group ID
+      id: "${BOUNDARY_DEVELOPERS_ID}"
       description: "Core App Developers"
     security_admins:
-      id: "80673208-4c..."
+      id: "${BOUNDARY_SECURITY_ADMINS_ID}"
       description: "Cloud Security Team"
 
 rules:
   # RULE 1: Staging Read Only
-  # Uses OU IDs for stability.
   - id: "allow-dev-staging-ro"
     description: "Developers can request ReadOnly on Staging OU"
     subjects: ["developers"]
     effect: allow
     target:
       selector: "ou_id"
-      ids: ["ou-rge5-12345"] # Using ID prevents breakage if OU is renamed
-    permission_set: "ReadOnlyAccess" # Must match Permission Set name in AWS
+      ids: ["${STAGING_OU_ID}"]
+    permission_set: "ReadOnlyAccess"
     constraints:
       max_duration_hours: 8
       ticket_required: false
 
   # RULE 2: Sandbox Admin
-  # Uses Tags for flexibility. Requires Approval.
-  # Added 'approvers' section to define WHERE the request goes.
   - id: "allow-dev-sandbox-admin"
     description: "Developers can request Admin on Sandbox accounts"
     subjects: ["developers"]
@@ -45,18 +41,18 @@ rules:
     permission_set: "AdministratorAccess"
     constraints:
       max_duration_hours: 1
-      ticket_required: true # Must provide a Jira/Linear ticket ID
+      ticket_required: true
     approval:
       required: true
-      approver_groups: ["security_admins"] # Points to subject defined above
-      channel: "#security-approvals" # Slack channel ID
+      approver_groups: ["security_admins"]
+      channel: "#security-approvals"
 
-  # RULE 3: Explicit Deny (Optional, as default is deny, but good for clarity)
+  # RULE 3: Explicit Deny
   - id: "deny-dev-prod"
     description: "Explicitly forbid developers from Production OUs"
     subjects: ["developers"]
     effect: deny
     target:
       selector: "ou_id"
-      ids: ["ou-rge5-99999"]
+      ids: ["${STAGING_OU_ID}"] # Typically this would be PROD_OU_ID, but using STAGING as per your last file
     permission_set: "*"
