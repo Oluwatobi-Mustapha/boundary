@@ -1,0 +1,36 @@
+variable "project_name" {
+  description = "Project name prefix"
+  type        = string
+  default     = "boundary"
+}
+
+variable "environment" {
+  description = "Deployment environment (e.g., dev)"
+  type        = string
+}
+
+variable "dynamodb_table_name" {
+  description = "The DynamoDB table containing active access requests"
+  type        = string
+}
+
+variable "dynamodb_table_arn" {
+  description = "The ARN of the DynamoDB table (for IAM policy scoping)"
+  type        = string
+}
+
+variable "identity_store_id" {
+  description = "The SSO Identity Store ID (for scoping permissions)"
+  type        = string
+}
+
+variable "sso_instance_arn" {
+  description = "The SSO Instance ARN"
+  type        = string
+}
+
+variable "schedule_expression" {
+  description = "How often the Janitor runs"
+  type        = string
+  default     = "rate(1 minute)"
+}
