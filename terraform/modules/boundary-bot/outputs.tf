@@ -13,3 +13,7 @@ output "sns_topic_arn" {
   description = "SNS Topic for Boundary Alerts (Subscribe your email here)"
   value       = aws_sns_topic.alerts.arn
 }
+
+# NOTE: Once applied, go to the AWS Console -> Amazon SNS -> Topics. 
+# Find the boundary-dev-boundary-alerts topic, click Create subscription, select Email, and type your email address. 
+# You will get a confirmation link.
