@@ -1,8 +1,6 @@
-
+# ------------------------------------------------------------------------------
 # EVENTBRIDGE SCHEDULER
-
-# Note: We use the newer "aws_scheduler_schedule" resource (EventBridge Scheduler)
-# instead of the older CloudWatch Events Rule, as it is the modern standard.
+# ------------------------------------------------------------------------------
 
 resource "aws_iam_role" "scheduler" {
   name = "${var.project_name}-${var.environment}-scheduler-role"
@@ -28,7 +26,8 @@ resource "aws_iam_role_policy" "scheduler_invoke_lambda" {
     Statement = [{
       Effect   = "Allow"
       Action   = "lambda:InvokeFunction"
-      Resource = aws_lambda_function.janitor.arn
+      # CRITICAL: We must allow invoking the SPECIFIC ALIAS (:prod)
+      Resource = "${aws_lambda_function.janitor.arn}:prod"
     }]
   })
 }
@@ -44,7 +43,9 @@ resource "aws_scheduler_schedule" "janitor_tick" {
   schedule_expression = var.schedule_expression
 
   target {
-    arn      = aws_lambda_function.janitor.arn
+    # CRITICAL: Point to the ALIAS, not the function
+    # This ensures the scheduler always triggers the stable 'prod' version
+    arn      = aws_lambda_alias.janitor_prod.arn 
     role_arn = aws_iam_role.scheduler.arn
   }
 }
