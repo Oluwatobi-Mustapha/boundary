@@ -1,6 +1,8 @@
 import yaml
 import hashlib
 import datetime
+import os
+import re
 from src.models.request import AccessRequest 
 from src.models.aws_context import AWSAccountContext
 from dataclasses import dataclass, field
@@ -8,6 +10,7 @@ from typing import Optional, Dict, Any
 
 # 1. Define the Engine Version (Semantic Versioning)
 VERSION = "0.1.0"
+
 @dataclass
 class EvaluationResult:
     """
@@ -49,15 +52,37 @@ class PolicyEngine:
         Loads and parses the central security policy.
         Calculates a SHA256 hash of the file for audit integrity.
         """
-        # 1. Open in 'rb' (Read Binary) mode so we get raw bytes for hashing
-        with open(config_path, 'rb') as file:
-            content = file.read()
+        # 1. Read the raw text
+        with open(config_path, 'r') as file:
+            raw_content = file.read()
             
-            # 2. Calculate the Hash (Fingerprint)
-            self.policy_hash = hashlib.sha256(content).hexdigest()
+        # 2. Expand Environment Variables (The Sanitization Layer)
+        # We swap ${VAR} for the real value before parsing YAML
+        content_with_secrets = self._expand_env_vars(raw_content)
+
+        # 3. Calculate the Hash (Fingerprint) of the REAL content (post-expansion)
+        # This ensures the audit log reflects the actual IDs used, not the placeholders.
+        self.policy_hash = hashlib.sha256(content_with_secrets.encode('utf-8')).hexdigest()
+        
+        # 4. Parse the YAML
+        self.config = yaml.safe_load(content_with_secrets)
+
+    def _expand_env_vars(self, raw_yaml: str) -> str:
+        """
+        Replaces ${VAR_NAME} with the value from os.environ.
+        Raises an error if the variable is missing to prevent security gaps.
+        """
+        pattern = re.compile(r'\$\{([A-Z0-9_]+)\}')
+        
+        def replace(match):
+            var_name = match.group(1)
+            val = os.environ.get(var_name)
+            if not val:
+                # Fail Fast: Do not run with missing config
+                raise ValueError(f"CRITICAL: Policy config references ${{ {var_name} }}, but environment variable is missing.")
+            return val
             
-            # 3. Parse the YAML
-            self.config = yaml.safe_load(content)
+        return pattern.sub(replace, raw_yaml)
 
     def _get_subject_name(self, principal_id: str) -> Optional[str]:
         """Maps AWS GUIDs (IDP) to readable names (developers, security_admins)."""
@@ -178,7 +203,6 @@ class PolicyEngine:
                 )
 
             approval_cfg = rule.get("approval", {})
-            req_approval = approval_cfg.get("required", False)
             
            # --- RETURN ALLOW ---
             approval = rule.get("approval", {})
