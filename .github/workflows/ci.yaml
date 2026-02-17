@@ -1,0 +1,92 @@
+name: Boundary Production CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  # Allow manual triggering from the GitHub Actions UI
+  workflow_dispatch:
+
+# Concurrency Group:
+# If you push a new commit to the same PR, this cancels the previous running build.
+# This saves money and prevents testing stale code.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ------------------------------------------------------------------
+  # JOB 1: PYTHON INTEGRITY & SECURITY
+  # ------------------------------------------------------------------
+  python-audit:
+    name: Python Quality Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          # CI Tooling:
+          # - ruff: Fast linting (Style & Logic)
+          # - mypy: Static type checking (Type Safety)
+          # - bandit: Security scanning (Common Vulnerabilities)
+          # - pytest: Unit testing runner
+          pip install ruff mypy types-PyYAML types-boto3 bandit pytest
+
+      - name: Lint (Ruff)
+        # Enforce PEP8 and catch logical errors
+        run: ruff check src/ --ignore E501
+
+      - name: Type Check (MyPy)
+        # Enforce strict typing to prevent runtime TypeErrors
+        run: mypy src/ --ignore-missing-imports
+
+      - name: Security Scan (Bandit)
+        # Scans for security vulnerabilities (e.g., hardcoded secrets, unsafe deserialization)
+        # -r: recursive, -ll: medium/high severity
+        run: bandit -r src/ -ll
+
+      - name: Unit Tests
+        # Run tests if the directory exists
+        run: |
+          if [ -d "tests" ]; then
+            pytest tests/
+          else
+            echo "Skipping tests (tests/ directory not found)"
+          fi
+
+  # ------------------------------------------------------------------
+  # JOB 2: INFRASTRUCTURE INTEGRITY & SECURITY
+  # ------------------------------------------------------------------
+  terraform-audit:
+    name: Terraform Quality Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Format Check
+        # Fail if code is not properly formatted
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Security Scan (Tfsec)
+        # Scans Terraform code for security misconfigurations (e.g., open security groups)
+        uses: aquasecurity/tfsec-action@v1.0.0
+        with:
+          soft_fail: false # Fail the build if vulnerabilities are found
