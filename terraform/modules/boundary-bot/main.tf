@@ -2,7 +2,6 @@
 # 1. CODE PACKAGING
 # ------------------------------------------------------------------------------
 # We zip the Project Root but exclude infrastructure and git files.
-# This preserves the 'src/' folder structure so imports work in Lambda.
 data "archive_file" "lambda_package" {
   type        = "zip"
   source_dir  = "${path.module}/../../.." # Project Root
@@ -37,10 +36,16 @@ resource "aws_lambda_function" "janitor" {
   source_code_hash = data.archive_file.lambda_package.output_base64sha256
 
   environment {
-    variables = {
-      DYNAMODB_TABLE = var.dynamodb_table_name
-      LOG_LEVEL      = "INFO"
-    }
+    # CRITICAL CHANGE:
+    # We merge the required infrastructure vars with the dynamic secrets provided by the user.
+    # This allows us to pass 'BOUNDARY_DEVELOPERS_ID' without hardcoding it here.
+    variables = merge(
+      {
+        DYNAMODB_TABLE = var.dynamodb_table_name
+        LOG_LEVEL      = "INFO"
+      },
+      var.extra_env_vars
+    )
   }
 
   tags = {
