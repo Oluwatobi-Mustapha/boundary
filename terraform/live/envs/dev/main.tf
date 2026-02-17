@@ -1,6 +1,6 @@
-
-# BOUNDARY IDENTITY MODULE
-
+# ------------------------------------------------------------------------------
+# BOUNDARY IDENTITY MODULE (The Body)
+# ------------------------------------------------------------------------------
 module "boundary_identity" {
   source = "../../../modules/boundary-identity"
 
@@ -8,8 +8,9 @@ module "boundary_identity" {
   permission_sets = var.permission_sets
 }
 
-
-# BOUNDARY STATE MODULE (New)
+# ------------------------------------------------------------------------------
+# BOUNDARY STATE MODULE (The Memory)
+# ------------------------------------------------------------------------------
 module "boundary_state" {
   source = "../../../modules/boundary-state"
 
@@ -17,7 +18,9 @@ module "boundary_state" {
   environment  = "dev"
 }
 
-# BOUNDARY BOT (The Janitor) - NEW
+# ------------------------------------------------------------------------------
+# BOUNDARY BOT (The Janitor)
+# ------------------------------------------------------------------------------
 module "boundary_bot" {
   source = "../../../modules/boundary-bot"
 
@@ -29,9 +32,12 @@ module "boundary_bot" {
   dynamodb_table_arn  = module.boundary_state.table_arn
 
   # Wiring Identity (Body) -> Bot
-  # These inputs rely on the updated outputs.tf in boundary-identity
   sso_instance_arn  = module.boundary_identity.sso_instance_arn
   identity_store_id = module.boundary_identity.identity_store_id
+
+  # Wiring Secrets (Config) -> Bot
+  # Pass the secrets from tfvars down to the Lambda
+  extra_env_vars = var.boundary_secrets
 
   # Schedule
   schedule_expression = "rate(1 minute)"
