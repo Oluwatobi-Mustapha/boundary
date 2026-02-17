@@ -11,10 +11,23 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.adapters.aws_orgs import AWSOrganizationsAdapter
 from src.adapters.state_store import StateStore
 
-# Configure logging to work in both CLI and Lambda
+# --- LOGGING CONFIGURATION ---
+# We configure this globally so it applies to both CLI and Lambda contexts.
 logger = logging.getLogger()
+
+# 1. FORCE the log level to INFO. 
+#    AWS Lambda defaults to WARNING, which swallows our heartbeat logs.
+logger.setLevel(logging.INFO)
+
+# 2. Add a handler only if none exists (Prevent duplicate logs in CLI).
+#    In Lambda, a handler already exists, so this block is skipped, 
+#    but the setLevel above ensures the existing handler sees our INFO logs.
 if not logger.handlers:
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+    console_handler = logging.StreamHandler()
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(formatter)
+    logger.addHandler(console_handler)
+# -----------------------------
 
 def run_revocation_loop(table_name: str, dry_run: bool = False):
     """
@@ -89,6 +102,7 @@ def lambda_handler(event, context):
     # In Lambda, we get configuration from Environment Variables
     table_name = os.environ.get("DYNAMODB_TABLE")
     if not table_name:
+        logger.error("CRITICAL: DYNAMODB_TABLE environment variable not set.")
         raise ValueError("CRITICAL: DYNAMODB_TABLE environment variable not set.")
     
     return run_revocation_loop(table_name=table_name, dry_run=False)
