@@ -1,9 +1,9 @@
-# ------------------------------------------------------------------------------
+
 # REMOTE STATE CONFIGURATION (Pattern A)
-# ------------------------------------------------------------------------------
+
 # Update 'bucket' and 'dynamodb_table' with the outputs from your Bootstrap phase.
 # The 'key' ensures this state file is isolated to the Dev environment.
-# ------------------------------------------------------------------------------
+
 
 terraform {
   backend "s3" {
