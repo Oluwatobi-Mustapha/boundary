@@ -34,3 +34,9 @@ variable "schedule_expression" {
   type        = string
   default     = "rate(1 minute)"
 }
+
+variable "extra_env_vars" {
+  description = "Map of additional environment variables to pass to the Lambda (e.g., config secrets)"
+  type        = map(string)
+  default     = {}
+}
