@@ -1,6 +1,6 @@
-# ------------------------------------------------------------------------------
+
 # EVENTBRIDGE SCHEDULER
-# ------------------------------------------------------------------------------
+
 # Note: We use the newer "aws_scheduler_schedule" resource (EventBridge Scheduler)
 # instead of the older CloudWatch Events Rule, as it is the modern standard.
 
