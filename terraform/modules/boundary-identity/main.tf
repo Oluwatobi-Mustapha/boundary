@@ -60,7 +60,7 @@ locals {
 resource "aws_ssoadmin_managed_policy_attachment" "this" {
   # Create a unique key for each attachment: "PermissionSetName.PolicyARN"
   for_each = {
-    for item in local.managed_policy_attachments : 
+    for item in local.managed_policy_attachments :
     "${item.ps_name}.${item.policy_arn}" => item
   }
 

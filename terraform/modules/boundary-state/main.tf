@@ -21,10 +21,10 @@ resource "aws_dynamodb_table" "active_requests" {
 
   # The Janitor's Index: Find ACTIVE requests that have expired
   global_secondary_index {
-    name               = "ExpirationIndex"
-    hash_key           = "status"
-    range_key          = "expires_at"
-    projection_type    = "ALL"
+    name            = "ExpirationIndex"
+    hash_key        = "status"
+    range_key       = "expires_at"
+    projection_type = "ALL"
   }
 
   # Auto-delete records (e.g., 90 days after expiry)

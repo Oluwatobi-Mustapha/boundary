@@ -24,8 +24,8 @@ resource "aws_iam_role_policy" "scheduler_invoke_lambda" {
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Effect   = "Allow"
-      Action   = "lambda:InvokeFunction"
+      Effect = "Allow"
+      Action = "lambda:InvokeFunction"
       # CRITICAL: We must allow invoking the SPECIFIC ALIAS (:prod)
       Resource = "${aws_lambda_function.janitor.arn}:prod"
     }]
@@ -45,7 +45,7 @@ resource "aws_scheduler_schedule" "janitor_tick" {
   target {
     # CRITICAL: Point to the ALIAS, not the function
     # This ensures the scheduler always triggers the stable 'prod' version
-    arn      = aws_lambda_alias.janitor_prod.arn 
+    arn      = aws_lambda_alias.janitor_prod.arn
     role_arn = aws_iam_role.scheduler.arn
   }
 }

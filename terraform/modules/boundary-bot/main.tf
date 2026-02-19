@@ -22,9 +22,9 @@ resource "aws_lambda_function" "janitor" {
   runtime       = "python3.11"
   timeout       = 60
   memory_size   = 128
-  
+
   # CRITICAL: Publish a new version on every code change
-  publish       = true 
+  publish = true
 
   filename         = data.archive_file.lambda_package.output_path
   source_code_hash = data.archive_file.lambda_package.output_base64sha256

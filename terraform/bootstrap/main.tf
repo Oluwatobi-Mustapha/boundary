@@ -5,7 +5,7 @@ resource "aws_s3_bucket" "terraform_state" {
   # Naming convention: project-tf-state-random_suffix
   # We use a prefix so AWS assigns a unique name, avoiding global naming conflicts
   bucket_prefix = "${var.project_name}-tf-state-"
-  force_destroy = false 
+  force_destroy = false
 
   lifecycle {
     prevent_destroy = false

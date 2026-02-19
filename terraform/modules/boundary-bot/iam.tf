@@ -35,9 +35,9 @@ resource "aws_iam_role_policy" "janitor_logic" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "DynamoDBAccess"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "DynamoDBAccess"
+        Effect = "Allow"
+        Action = [
           "dynamodb:Query",
           "dynamodb:GetItem",
           "dynamodb:UpdateItem"
@@ -48,9 +48,9 @@ resource "aws_iam_role_policy" "janitor_logic" {
         ]
       },
       {
-        Sid      = "SSOAccess"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "SSOAccess"
+        Effect = "Allow"
+        Action = [
           "sso:DeleteAccountAssignment",
           "sso:DescribePermissionSet", # Required for adapter init
           "sso:ListTagsForResource"    # Required for adapter init
@@ -58,9 +58,9 @@ resource "aws_iam_role_policy" "janitor_logic" {
         Resource = "*" # SSO actions often require wildcard scope, or specific Instance ARN
       },
       {
-        Sid      = "OrgsAccess"
-        Effect   = "Allow"
-        Action   = [
+        Sid    = "OrgsAccess"
+        Effect = "Allow"
+        Action = [
           "organizations:ListParents",
           "organizations:ListTagsForResource"
         ]

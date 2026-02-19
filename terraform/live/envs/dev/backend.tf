@@ -13,4 +13,4 @@ terraform {
     dynamodb_table = "boundary-tf-locks"
     encrypt        = true
   }
-}   
+}
