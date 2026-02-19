@@ -1,7 +1,7 @@
 import boto3
 import time
 from decimal import Decimal
-from typing import List, Optional
+from typing import List
 from botocore.exceptions import ClientError
 from src.models.request import AccessRequest
 

@@ -4,7 +4,6 @@ Unit tests for input validation (Security Fixes H-2, H-3)
 import pytest
 import sys
 import os
-import math
 
 # Add src to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

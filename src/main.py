@@ -3,7 +3,6 @@ import os
 import time
 import argparse
 import logging
-from typing import Optional
 
 # --- PATH FIX ---
 # Ensures we can import from 'src' regardless of where the script is run
@@ -125,7 +124,7 @@ def main():
     except AWSResourceNotFoundError as e:
         logger.error(f"AWS Infrastructure Error: {e}")
         sys.exit(3)
-    except Exception as e:
+    except Exception:
         logger.exception("Unexpected System Failure")
         sys.exit(1)
 
