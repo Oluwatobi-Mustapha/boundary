@@ -3,13 +3,9 @@
 # ------------------------------------------------------------------------------
 data "archive_file" "lambda_package" {
   type        = "zip"
-  source_dir  = "${path.module}/../../.."
+  # We only zip the source code, nothing else.
+  source_dir  = "${path.module}/../../../src"
   output_path = "${path.module}/build/boundary_bot.zip"
-
-  excludes = [
-    ".git", ".github", ".gitignore", "terraform", "audit_logs",
-    "tests", "venv", "__pycache__", "Makefile", ".DS_Store"
-  ]
 }
 
 # ------------------------------------------------------------------------------
@@ -18,12 +14,13 @@ data "archive_file" "lambda_package" {
 resource "aws_lambda_function" "janitor" {
   function_name = "${var.project_name}-${var.environment}-janitor"
   role          = aws_iam_role.janitor_execution.arn
-  handler       = "src.janitor.lambda_handler"
+  # CRITICAL FIX: Because we zipped 'src' directly, the handler is just the filename.function
+  handler       = "janitor.lambda_handler" 
   runtime       = "python3.11"
   timeout       = 60
   memory_size   = 128
 
-  # CRITICAL: Publish a new version on every code change
+  # Publish a new version on every code change
   publish = true
 
   filename         = data.archive_file.lambda_package.output_path
