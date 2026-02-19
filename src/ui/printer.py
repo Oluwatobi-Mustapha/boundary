@@ -69,7 +69,7 @@ def _stringify_dictlike(x: Any) -> Dict[str, Any]:
         return {}
     if isinstance(x, dict):
         return x
-    if is_dataclass(x):
+    if is_dataclass(x) and not isinstance(x, type):
         return asdict(x)
     if hasattr(x, "__dict__"):
         return dict(x.__dict__)

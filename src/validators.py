@@ -53,7 +53,7 @@ def validate_account_id(account_id: str) -> str:
     return account_id
 
 
-def validate_arn(arn: str, resource_type: str = None) -> str:
+def validate_arn(arn: str, resource_type: str | None = None) -> str:
     """
     Validates AWS ARN format.
     
