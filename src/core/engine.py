@@ -209,8 +209,6 @@ class PolicyEngine:
                     policy_hash=self.policy_hash,
                     context_evidence=evidence
                 )
-
-            approval_cfg = rule.get("approval", {})
             
            # --- RETURN ALLOW ---
             approval = rule.get("approval", {})
