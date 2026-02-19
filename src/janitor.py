@@ -11,7 +11,7 @@ from src.adapters.aws_orgs import AWSOrganizationsAdapter
 from src.adapters.state_store import StateStore
 
 # --- LOGGING CONFIGURATION ---
-# We configure this globally so it applies to both CLI and Lambda contexts.explicitly set logger.setLevel(logging.INFO)
+# We configure this globally so it applies to both CLI and Lambda contexts. 
 logger = logging.getLogger()
 
 # 1. FORCE the log level to INFO. 
