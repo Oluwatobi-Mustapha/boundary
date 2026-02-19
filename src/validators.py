@@ -70,8 +70,8 @@ def validate_arn(arn: str, resource_type: str = None) -> str:
     if not arn:
         raise ValueError("ARN cannot be empty")
     
-    # Support all AWS partitions: aws, aws-cn, aws-us-gov
-    if not re.match(r'^arn:aws(-[a-z-]+)?:', arn):
+    # Support only valid AWS partitions: aws, aws-cn, aws-us-gov
+    if not re.match(r'^arn:aws(-cn|-us-gov)?:', arn):
         raise ValueError(f"Invalid ARN format. Must start with 'arn:aws:', 'arn:aws-cn:', or 'arn:aws-us-gov:', got: {arn}")
     
     parts = arn.split(":")
