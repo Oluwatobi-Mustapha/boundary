@@ -7,11 +7,9 @@ from typing import Optional, Any, Dict, Iterable, Tuple
 from rich import box
 from rich.console import Console
 from rich.table import Table
-from rich.text import Text
 
 from src.models.request import AccessRequest
 from src.core.engine import EvaluationResult
-from src.ui import __version__
 
 
 # ---------- Helpers ----------
@@ -61,7 +59,7 @@ def _safe_get(obj: Any, key: str, default: Any = None) -> Any:
         return default
     if isinstance(obj, dict):
         return obj.get(key, default)
-    if is_dataclass(obj):
+    if is_dataclass(obj) and not isinstance(obj, type):
         return asdict(obj).get(key, default)
     return getattr(obj, key, default)
 
@@ -71,7 +69,7 @@ def _stringify_dictlike(x: Any) -> Dict[str, Any]:
         return {}
     if isinstance(x, dict):
         return x
-    if is_dataclass(x):
+    if is_dataclass(x) and not isinstance(x, type):
         return asdict(x)
     if hasattr(x, "__dict__"):
         return dict(x.__dict__)
@@ -236,8 +234,6 @@ def print_verdict(
     else:
         evaluated_utc = _iso_utc_now_seconds()
 
-    now_utc = _iso_utc_now_seconds()
-
     policy_hash = _safe_get(res, "policy_hash", "") or ""
     policy_hash_short = f"{policy_hash[:16]}…" if policy_hash else "-"
 
@@ -269,11 +265,9 @@ def print_verdict(
     # TIMESTAMPS + HEADLINE
     # =========================
     _divider(console, "UTC")
-    console.print(f"[green]Requested At:[/green] [dim]{now_utc}[/dim]")
+    console.print(f"[green]Requested At:[/green] [dim]{requested_utc}[/dim]")
     console.print(f"[green]Evaluated At:[/green] [dim]{evaluated_utc}[/dim]")
     console.print(f"[green]Expired At:[/green] [dim]{expires_utc}[/dim]\n")
-
-    
 
     category = _category_for(effect, reason)
 

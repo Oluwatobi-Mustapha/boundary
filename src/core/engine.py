@@ -80,6 +80,14 @@ class PolicyEngine:
             if not val:
                 # Fail Fast: Do not run with missing config
                 raise ValueError(f"CRITICAL: Policy config references ${{ {var_name} }}, but environment variable is missing.")
+            
+            # Validate format based on variable type
+            if "OU_ID" in var_name:
+                if not re.match(r'^(r-[a-z0-9]{4,32}|ou-[a-z0-9]{4,32}-[a-z0-9]{8,32})$', val):
+                    raise ValueError(f"Invalid OU/Root ID format for {var_name}: {val}. Expected 'ou-xxxx-xxxxxxxx' or 'r-xxxx'")
+            elif var_name.endswith("_ID") and not val.strip():
+                raise ValueError(f"Empty value for {var_name}")
+            
             return val
             
         return pattern.sub(replace, raw_yaml)
@@ -201,8 +209,6 @@ class PolicyEngine:
                     policy_hash=self.policy_hash,
                     context_evidence=evidence
                 )
-
-            approval_cfg = rule.get("approval", {})
             
            # --- RETURN ALLOW ---
             approval = rule.get("approval", {})
