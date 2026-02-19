@@ -59,7 +59,7 @@ def _safe_get(obj: Any, key: str, default: Any = None) -> Any:
         return default
     if isinstance(obj, dict):
         return obj.get(key, default)
-    if is_dataclass(obj):
+    if is_dataclass(obj) and not isinstance(obj, type):
         return asdict(obj).get(key, default)
     return getattr(obj, key, default)
 
