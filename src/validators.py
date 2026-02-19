@@ -3,6 +3,7 @@ Input validation utilities for security-critical parameters.
 Prevents injection attacks, DoS, and enumeration vulnerabilities.
 """
 import re
+import math
 
 
 def validate_duration(duration: float) -> float:
@@ -18,6 +19,9 @@ def validate_duration(duration: float) -> float:
     Raises:
         ValueError: If duration is invalid
     """
+    if math.isnan(duration) or math.isinf(duration):
+        raise ValueError(f"Duration must be a valid number, got: {duration}")
+    
     if duration <= 0:
         raise ValueError(f"Duration must be positive, got: {duration}")
     
@@ -66,8 +70,9 @@ def validate_arn(arn: str, resource_type: str = None) -> str:
     if not arn:
         raise ValueError("ARN cannot be empty")
     
-    if not arn.startswith("arn:aws:"):
-        raise ValueError(f"Invalid ARN format. Must start with 'arn:aws:', got: {arn}")
+    # Support all AWS partitions: aws, aws-cn, aws-us-gov
+    if not re.match(r'^arn:aws(-[a-z-]+)?:', arn):
+        raise ValueError(f"Invalid ARN format. Must start with 'arn:aws:', 'arn:aws-cn:', or 'arn:aws-us-gov:', got: {arn}")
     
     parts = arn.split(":")
     if len(parts) < 6:

@@ -83,7 +83,7 @@ class PolicyEngine:
             
             # Validate format based on variable type
             if "OU_ID" in var_name:
-                if not re.match(r'^(r-[a-z0-9]{4}|ou-[a-z0-9]{4}-[a-z0-9]{8})$', val):
+                if not re.match(r'^(r-[a-z0-9]{4,32}|ou-[a-z0-9]{4,32}-[a-z0-9]{8,32})$', val):
                     raise ValueError(f"Invalid OU/Root ID format for {var_name}: {val}. Expected 'ou-xxxx-xxxxxxxx' or 'r-xxxx'")
             elif var_name.endswith("_ID") and not val.strip():
                 raise ValueError(f"Empty value for {var_name}")

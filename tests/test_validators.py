@@ -4,6 +4,7 @@ Unit tests for input validation (Security Fixes H-2, H-3)
 import pytest
 import sys
 import os
+import math
 
 # Add src to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -33,6 +34,19 @@ class TestDurationValidation:
         
         with pytest.raises(ValueError, match="exceeds maximum"):
             validate_duration(999999.0)
+    
+    def test_nan_duration_rejected(self):
+        """P1 Fix: NaN bypasses validation"""
+        with pytest.raises(ValueError, match="must be a valid number"):
+            validate_duration(float('nan'))
+    
+    def test_infinity_duration_rejected(self):
+        """P1 Fix: Infinity bypasses validation"""
+        with pytest.raises(ValueError, match="must be a valid number"):
+            validate_duration(float('inf'))
+        
+        with pytest.raises(ValueError, match="must be a valid number"):
+            validate_duration(float('-inf'))
 
 
 class TestAccountIDValidation:
@@ -70,12 +84,22 @@ class TestARNValidation:
         arn = "arn:aws:sso:::instance/ssoins-1234567890abcdef"
         assert validate_arn(arn) == arn
     
+    def test_valid_govcloud_arn(self):
+        """P2 Fix: GovCloud ARNs should be accepted"""
+        arn = "arn:aws-us-gov:sso:::instance/ssoins-123"
+        assert validate_arn(arn) == arn
+    
+    def test_valid_china_arn(self):
+        """P2 Fix: China partition ARNs should be accepted"""
+        arn = "arn:aws-cn:sso:::instance/ssoins-123"
+        assert validate_arn(arn) == arn
+    
     def test_empty_arn_rejected(self):
         with pytest.raises(ValueError, match="cannot be empty"):
             validate_arn("")
     
     def test_invalid_arn_prefix_rejected(self):
-        with pytest.raises(ValueError, match="Must start with 'arn:aws:'"):
+        with pytest.raises(ValueError, match="Must start with"):
             validate_arn("invalid:arn:format")
     
     def test_malformed_arn_rejected(self):
