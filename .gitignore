@@ -123,6 +123,9 @@ JetBrains (PyCharm)
 
 --- project Specific ---
 
+# Audit artifacts (contain sensitive AWS account IDs and ARNs)
+audit_logs/
+*.audit.json
 
 # Log files
 

@@ -17,6 +17,7 @@ from src.adapters.aws_orgs import AWSOrganizationsAdapter, AWSResourceNotFoundEr
 from src.adapters.state_store import StateStore
 from src.ui.printer import print_verdict
 from src.ui.json_logger import log_audit_event
+from src.validators import validate_duration, validate_account_id, validate_arn
 
 def main():
     parser = argparse.ArgumentParser(description="Boundary: Ephemeral Access System (Production)")
@@ -30,6 +31,15 @@ def main():
     parser.add_argument("--debug", action="store_true", help="Enable verbose logging")
     
     args = parser.parse_args()
+
+    # Validate inputs immediately (Fail Fast)
+    try:
+        args.duration = validate_duration(args.duration)
+        args.account = validate_account_id(args.account)
+        args.permission_set_arn = validate_arn(args.permission_set_arn)
+        args.instance_arn = validate_arn(args.instance_arn)
+    except ValueError as e:
+        parser.error(str(e))
 
     # Setup Logging
     log_level = logging.DEBUG if args.debug else logging.INFO
@@ -77,7 +87,16 @@ def main():
         # 5. ACTION & PERSISTENCE
         if result.effect == "ALLOW":
             try:
-                # --- A. PROVISION ACCESS (The Missing Link) ---
+                # --- CRITICAL FIX (H-1): Save state BEFORE provisioning ---
+                # This prevents zombie access grants if DynamoDB write fails
+                req.status = "PENDING"
+                req.rule_id = result.rule_id or "unknown"
+                
+                logger.info("Saving access state to DynamoDB (PENDING)...")
+                state_store.save_request(req)
+                logger.info("✅ State saved. Proceeding to provision...")
+
+                # --- A. PROVISION ACCESS ---
                 logger.info("Provisioning access in AWS Identity Center...")
                 adapter.assign_user_to_account(
                     principal_id=req.principal_id,
@@ -87,13 +106,10 @@ def main():
                 )
                 logger.info("✅ Access successfully provisioned in AWS.")
 
-                # --- B. SAVE STATE ---
-                req.status = "ACTIVE"
-                req.rule_id = result.rule_id or "unknown"
-                
-                logger.info("Saving access state to DynamoDB...")
-                state_store.save_request(req)
-                logger.info("✅ Access State successfully saved to DynamoDB.")
+                # --- B. UPDATE STATUS TO ACTIVE ---
+                logger.info("Updating status to ACTIVE...")
+                state_store.update_status(req.request_id, "ACTIVE")
+                logger.info("✅ Access grant complete.")
                 
                 sys.exit(0)
 
