@@ -28,6 +28,9 @@ class SlackAdapter:
         if not bot_token or not bot_token.startswith("xoxb-"):
             raise ValueError("A valid Slack Bot Token (xoxb-) is required.")
         
+        if cache_max_size <= 0:
+            raise ValueError(f"cache_max_size must be positive, got {cache_max_size}")
+        
         self.bot_token = bot_token
         self.base_url = "https://slack.com/api"
         
@@ -87,7 +90,7 @@ class SlackAdapter:
                         # Remove oldest entry (FIFO/LRU)
                         evicted_id = next(iter(self._email_cache))
                         self._email_cache.pop(evicted_id)
-                        logger.debug(f"Cache full, evicted: {evicted_id}")
+                        logger.debug("Cache full, evicted entry")
                     
                     self._email_cache[slack_user_id] = email
                     return email
