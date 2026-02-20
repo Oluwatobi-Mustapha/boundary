@@ -77,8 +77,8 @@ class IdentityStoreAdapter:
                     logger.debug("Cache full, evicted entry")
                 
                 self._user_cache[email] = user_id
-                # Log at DEBUG level to avoid PII exposure in production logs
-                logger.debug(f"Resolved {email} to AWS User ID: {user_id}")
+                # Successfully resolved identity without logging PII
+                logger.debug("Successfully resolved email to AWS User ID")
                 return user_id
                 
             except self.client.exceptions.ResourceNotFoundException:

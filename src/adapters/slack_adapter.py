@@ -96,7 +96,7 @@ class SlackAdapter:
                         logger.debug("Cache full, evicted entry")
                     
                     self._email_cache[slack_user_id] = email
-                    logger.debug(f"Resolved Slack user to email: {email}")
+                    logger.debug("Successfully resolved Slack user to email")
                     return email
 
             except urllib.error.HTTPError as e:
