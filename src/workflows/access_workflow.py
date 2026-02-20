@@ -191,11 +191,8 @@ class SlackWorkflow:
                 user_msg = "Unable to retrieve your Slack profile. Please try again."
             elif isinstance(e, IdentityStoreError):
                 user_msg = "Unable to map your identity to AWS. Please contact your administrator."
-            elif isinstance(e, WorkflowError):
-                # WorkflowError messages are safe (no PII)
+            else:  # WorkflowError - messages are safe (no PII)
                 user_msg = str(e)
-            else:
-                user_msg = "An error occurred processing your request."
             
             self._send_slack_reply(response_url, f"⚠️ {user_msg}", is_success=False)
             
