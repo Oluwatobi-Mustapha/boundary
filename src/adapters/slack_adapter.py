@@ -24,7 +24,7 @@ class SlackAdapter:
         
         self.bot_token = bot_token
         self.base_url = "https://slack.com/api"
-        self._email_cache = {}
+        self._email_cache: dict[str, str] = {}
     
     def __repr__(self):
         return "SlackAdapter(token=***REDACTED***)"
