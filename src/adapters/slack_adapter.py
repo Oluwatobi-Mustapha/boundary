@@ -77,6 +77,11 @@ class SlackAdapter:
 
             except urllib.error.HTTPError as e:
                 if e.code == 429:
+                    # Skip sleep on last attempt (no point retrying after)
+                    if attempt == max_retries:
+                        logger.error(f"Rate limited on final attempt for {slack_user_id}")
+                        break
+                    
                     # The Receptionist is overwhelmed! Read the sign and wait.
                     retry_after_raw = e.headers.get("Retry-After", str(2 ** (attempt - 1)))
                     try:
@@ -94,6 +99,16 @@ class SlackAdapter:
                 else:
                     logger.error(f"HTTP Error calling Slack: {e.code} - {e.reason}")
                     raise SlackAPIError(f"Slack API error: HTTP {e.code}")
+            
+            except urllib.error.URLError as e:
+                # Handle network timeouts and connection errors
+                if attempt == max_retries:
+                    logger.error(f"Network error on final attempt for {slack_user_id}: {e}")
+                    raise SlackAPIError(f"Network error: {e}")
+                
+                logger.warning(f"Network error, retrying... (Attempt {attempt}/{max_retries}): {e}")
+                time.sleep(2 ** (attempt - 1))  # Exponential backoff
+                continue
 
         # If we exit the loop, we exhausted all retries
         logger.error(f"Failed to fetch email for {slack_user_id} after {max_retries} retries.")
