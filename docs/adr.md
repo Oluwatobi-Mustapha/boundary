@@ -78,3 +78,32 @@ Rather than attempting to IP-allowlist Slack's massive and dynamic IP ranges at 
 * **Positive:** Mathematically guarantees the payload originated from our specific Slack app.
 * **Positive:** Inherently mitigates replay attacks by strictly enforcing a 5-minute maximum clock drift window on the request timestamp.
 * **Negative:** Malicious requests still trigger Lambda execution (and SSM/KMS fetches on cold starts) before being dropped, potentially incurring minor compute costs during a DDoS event.
+
+## ADR-005: Slack-to-AWS Identity Translation Chain
+
+**Date:** 2026-02-20
+
+### 5th Context
+
+Slack users are identified by opaque IDs (e.g., `U1234ABCD`), while AWS Identity Center requires the user's Principal ID (UUID format). We need a reliable, performant way to translate Slack user IDs into AWS Identity Store User IDs to provision access. A naive approach would tightly couple Slack API calls with AWS API calls in a single monolithic function, making testing difficult and violating the Single Responsibility Principle.
+
+### 5th Decision
+
+We will implement a **Two-Adapter Identity Translation Chain**:
+
+1. **SlackAdapter** (`src/adapters/slack_adapter.py`): Maps Slack User ID → Email via Slack Web API (`users.info`).
+2. **IdentityStoreAdapter** (`src/adapters/identity_store_adapter.py`): Maps Email → AWS Principal ID via AWS Identity Store API (`ListUsers` with email filter).
+3. **SlackWorkflow** (`src/workflows/access_workflow.py`): Orchestrates the chain and handles errors.
+
+Both adapters implement:
+- **Bounded LRU Cache** (max 1000 entries) using OrderedDict to prevent memory exhaustion in long-running Lambda functions.
+- **Exponential Backoff with Jitter** (0-50% random jitter) to handle rate limits (Slack HTTP 429, AWS ThrottlingException) and prevent thundering herd.
+- **PII Protection**: All emails and user IDs are logged at DEBUG level only, never at INFO/WARNING in production logs.
+
+### 5th Consequences
+
+* **Positive:** Decoupled adapters enable independent unit testing (mock Slack without AWS, and vice versa).
+* **Positive:** Bounded cache prevents memory leaks while maintaining sub-millisecond lookup performance for repeat requests.
+* **Positive:** Jittered retry logic prevents cascading failures during API rate limit events.
+* **Negative:** Two sequential API calls add ~200-500ms latency compared to a hypothetical direct Slack-to-AWS mapping (which doesn't exist).
+* **Negative:** Cache invalidation is time-based only (5-minute TTL); if a user's email changes in Slack or AWS, stale data may be served until cache expires.
