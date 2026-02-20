@@ -2,7 +2,7 @@
 # 1. CODE PACKAGING
 # ------------------------------------------------------------------------------
 data "archive_file" "lambda_package" {
-  type        = "zip"
+  type = "zip"
   # We only zip the source code, nothing else.
   source_dir  = "${path.module}/../../../src"
   output_path = "${path.module}/build/boundary_bot.zip"
@@ -15,10 +15,10 @@ resource "aws_lambda_function" "janitor" {
   function_name = "${var.project_name}-${var.environment}-janitor"
   role          = aws_iam_role.janitor_execution.arn
   # CRITICAL FIX: Because we zipped 'src' directly, the handler is just the filename.function
-  handler       = "janitor.lambda_handler" 
-  runtime       = "python3.11"
-  timeout       = 60
-  memory_size   = 128
+  handler     = "janitor.lambda_handler"
+  runtime     = "python3.11"
+  timeout     = 60
+  memory_size = 128
 
   # Publish a new version on every code change
   publish = true

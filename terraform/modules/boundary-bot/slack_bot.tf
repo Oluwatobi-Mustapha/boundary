@@ -37,8 +37,8 @@ resource "aws_iam_role_policy" "slack_bot_ssm" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = "ssm:GetParameter"
+        Effect = "Allow"
+        Action = "ssm:GetParameter"
         # We strictly limit this to ONLY the Slack signing secret
         Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/boundary/slack/signing_secret"
       }
@@ -55,7 +55,7 @@ resource "aws_lambda_function" "slack_bot" {
   handler       = "slack_bot.lambda_handler" # We will create this python file next
   runtime       = "python3.11"
   timeout       = 10 # Slack requires a response within 3 seconds!
-  
+
   # We reuse the exact same zip file we built in main.tf
   filename         = data.archive_file.lambda_package.output_path
   source_code_hash = data.archive_file.lambda_package.output_base64sha256
@@ -106,7 +106,7 @@ resource "aws_lambda_permission" "api_gw_invoke" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.slack_bot.function_name
   principal     = "apigateway.amazonaws.com"
-  
+
   # Only allow THIS specific API Gateway to trigger the Lambda
   source_arn = "${aws_apigatewayv2_api.slack_api.execution_arn}/*/*"
 }
