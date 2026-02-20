@@ -44,6 +44,10 @@ class SlackAdapter:
         
         url = f"{self.base_url}/users.info?user={slack_user_id}"
         
+        # Validate URL scheme for security (Bandit B310)
+        if not url.startswith("https://"):
+            raise ValueError(f"Invalid URL scheme. Only HTTPS is allowed: {url}")
+        
         # We must prove our identity to Slack using the Bearer token
         headers = {
             "Authorization": f"Bearer {self.bot_token}",
@@ -53,7 +57,7 @@ class SlackAdapter:
         for attempt in range(1, max_retries + 1):
             req = urllib.request.Request(url, headers=headers, method="GET")
             try:
-                with urllib.request.urlopen(req, timeout=10) as response:
+                with urllib.request.urlopen(req, timeout=10) as response:  # nosec B310
                     # Slack returns HTTP 200 even for logical errors, so we parse the JSON
                     data = json.loads(response.read().decode("utf-8"))
 
