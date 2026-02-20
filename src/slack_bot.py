@@ -69,23 +69,26 @@ def lambda_handler(event, context):
     else:
         logger.info("Warm Start: Using cached Slack Secret.")
         
-    # --- 3. THE SLACK MATH ---
-    headers = {k.lower(): v for k, v in event.get('headers', {}).items()}
+   # --- 3. DECODE THE PAYLOAD FIRST ---
     raw_body = event.get('body', '')
-
-    if not verify_slack_signature(headers, raw_body, CACHED_SLACK_SECRET):
-        logger.error("🚨 Invalid Slack Signature! Dropping request.")
-        return {"statusCode": 401, "body": "Unauthorized"}
-        
-    logger.info("✅ Slack Signature Verified!")
     
-    # --- 4. DECODE AND PARSE THE PAYLOAD ---
     if event.get('isBase64Encoded', False):
         logger.info("Decoding Base64 payload from API Gateway...")
         decoded_body = base64.b64decode(raw_body).decode('utf-8')
     else:
         decoded_body = raw_body
 
+    # --- 4. THE SLACK MATH ---
+    headers = {k.lower(): v for k, v in event.get('headers', {}).items()}
+
+    # Notice we are using decoded_body here now!
+    if not verify_slack_signature(headers, decoded_body, CACHED_SLACK_SECRET):
+        logger.error("🚨 Invalid Slack Signature! Dropping request.")
+        return {"statusCode": 401, "body": "Unauthorized"}
+        
+    logger.info("✅ Slack Signature Verified!")
+    
+    # --- 5. PARSE THE 1990s STRING ---
     parsed_body = urllib.parse.parse_qs(decoded_body)
     
     user_id = parsed_body.get('user_id', [''])[0]
@@ -94,31 +97,12 @@ def lambda_handler(event, context):
     
     logger.info(f"User {user_id} requested: {command_text}")
 
-    # --- 5. THE DECOUPLING ---
+    # --- 6. THE DECOUPLING STUB ---
     policy_engine_arn = os.environ.get('POLICY_ENGINE_ARN')
     
     if not policy_engine_arn:
-        logger.error("CRITICAL: POLICY_ENGINE_ARN environment variable is missing!")
-        return {"statusCode": 500, "body": "System Configuration Error"}
-
-    try:
-        logger.info(f"Asynchronously invoking Policy Engine: {policy_engine_arn}")
-        # Fire and Forget!
-        lambda_client.invoke(
-            FunctionName=policy_engine_arn,
-            InvocationType='Event', 
-            Payload=json.dumps({
-                "user_id": user_id,
-                "command_text": command_text,
-                "response_url": response_url # Passing the walkie-talkie to the Chef
-            })
-        )
-    except Exception as e:
-        logger.error(f"Failed to trigger Policy Engine: {e}")
-        return {"statusCode": 500, "body": "Internal queuing error."}
-    
-    # We return IMMEDIATELY so Slack doesn't time out.
-    return {
-        "statusCode": 200,
-        "body": "Got it! 🕵️ Evaluating your access request in the background..."
-    }
+        logger.warning("POLICY_ENGINE_ARN is missing, but returning 200 OK to satisfy Slack during testing.")
+        return {
+            "statusCode": 200,
+            "body": "Got it! 🚧 The Policy Engine is still under construction, but your Slack connection is perfect."
+        }
