@@ -42,3 +42,39 @@ Security tools often output unstructured text logs, making it difficult to inges
 * **Positive:** Enables automated pipeline gates via exit codes.
 
 * **Negative:** Requires stricter file handling (binary mode) in the Engine initialization.
+
+## ADR-003: Out-of-Band Bootstrapping for Third-Party Secrets
+
+**Date:** 2026-02-20
+
+### 3rd Context
+
+To integrate with Slack, our system requires highly sensitive third-party API credentials (the Slack Signing Secret and the OAuth Bot Token). Passing these secrets through Terraform variables (`.tfvars`) causes them to be stored in plaintext within the `terraform.tfstate` file in our S3 state bucket, creating a severe security vulnerability.
+
+### 3rd Decision
+
+We will employ **Out-of-Band Bootstrapping**. Engineers must manually inject these secrets directly into AWS Systems Manager (SSM) Parameter Store as KMS-encrypted `SecureString` parameters via the AWS CLI (Day 0 configuration). Terraform will strictly manage the IAM permissions (`ssm:GetParameter`) to allow Lambda to read these secrets at runtime.
+
+### 3rd Consequences
+
+* **Positive:** `terraform.tfstate` remains completely sanitized of third-party API keys.
+* **Positive:** Secret lifecycle and rotation are decoupled from infrastructure deployments.
+* **Negative:** Introduces a manual "Day 0" setup step that cannot be fully automated via standard CI/CD pipelines without introducing heavier external tooling (e.g., HashiCorp Vault).
+
+## ADR-004: Application-Layer HMAC Signature Verification
+
+**Date:** 2026-02-20
+
+### 4th Context
+
+The API Gateway webhook is publicly accessible. We must guarantee that only Slack can invoke the Policy Engine and prevent malicious actors from submitting spoofed access requests. 
+
+### 4th Decision
+
+Rather than attempting to IP-allowlist Slack's massive and dynamic IP ranges at the WAF/Gateway layer, we will implement **Application-Layer Cryptographic Verification** inside the Lambda function. The function will use the `x-slack-signature` and `x-slack-request-timestamp` headers to compute an HMAC-SHA256 hash using the bootstrapped Slack Signing Secret.
+
+### 4th Consequences
+
+* **Positive:** Mathematically guarantees the payload originated from our specific Slack app.
+* **Positive:** Inherently mitigates replay attacks by strictly enforcing a 5-minute maximum clock drift window on the request timestamp.
+* **Negative:** Malicious requests still trigger Lambda execution (and SSM/KMS fetches on cold starts) before being dropped, potentially incurring minor compute costs during a DDoS event.
