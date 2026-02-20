@@ -74,7 +74,7 @@ class IdentityStoreAdapter:
                     # Remove oldest entry (FIFO/LRU)
                     evicted_email = next(iter(self._user_cache))
                     self._user_cache.pop(evicted_email)
-                    logger.debug(f"Cache full, evicted entry")
+                    logger.debug("Cache full, evicted entry")
                 
                 self._user_cache[email] = user_id
                 # Log at DEBUG level to avoid PII exposure in production logs
@@ -91,8 +91,8 @@ class IdentityStoreAdapter:
                 if error_code == 'ThrottlingException':
                     # AWS is rate limiting us
                     if attempt == max_retries:
-                        logger.error(f"Throttled on final attempt")
-                        raise IdentityStoreError(f"AWS throttling exceeded max retries")
+                        logger.error("Throttled on final attempt")
+                        raise IdentityStoreError("AWS throttling exceeded max retries")
                     
                     # Exponential backoff with jitter to prevent thundering herd
                     backoff = 2 ** (attempt - 1)
@@ -115,4 +115,4 @@ class IdentityStoreAdapter:
 
         # If we exit the loop, we exhausted all retries
         logger.error(f"Failed to fetch user ID after {max_retries} retries")
-        raise IdentityStoreError(f"Identity Store query exceeded max retries")
+        raise IdentityStoreError("Identity Store query exceeded max retries")
