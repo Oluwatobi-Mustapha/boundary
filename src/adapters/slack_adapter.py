@@ -4,6 +4,7 @@ import json
 import time
 import logging
 import random
+import re
 from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
@@ -46,8 +47,9 @@ class SlackAdapter:
         Translates a Slack user ID (e.g., U123456) into a corporate email address.
         Includes robust handling for HTTP 429 Rate Limits with caching.
         """
-        if not slack_user_id or not slack_user_id.startswith("U"):
-            raise ValueError(f"Invalid Slack user ID: {slack_user_id}")
+        # Validate Slack user ID format: U followed by exactly 10 alphanumeric characters
+        if not slack_user_id or not re.match(r'^U[A-Z0-9]{10}$', slack_user_id):
+            raise ValueError(f"Invalid Slack user ID format: {slack_user_id}")
         
         # Check cache first
         if slack_user_id in self._email_cache:
