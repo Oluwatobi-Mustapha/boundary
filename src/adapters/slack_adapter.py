@@ -51,7 +51,7 @@ class SlackAdapter:
         
         # Check cache first
         if slack_user_id in self._email_cache:
-            logger.info(f"Cache hit for {slack_user_id}")
+            logger.debug("Cache hit for Slack user lookup")
             # Move to end (mark as recently used)
             self._email_cache.move_to_end(slack_user_id)
             return self._email_cache[slack_user_id]
@@ -77,12 +77,15 @@ class SlackAdapter:
 
                     if not data.get("ok"):
                         error_msg = data.get("error", "Unknown Slack API error")
-                        logger.error(f"Slack API rejected the request for {slack_user_id}: {error_msg}")
+                        logger.error(f"Slack API rejected request: {error_msg}")
+                        logger.debug(f"Slack API error for user_id: {slack_user_id}")
                         raise SlackAPIError(f"Slack API error: {error_msg}")
 
                     # The Gold: Extracting the email address from the deep JSON structure
                     email = data.get("user", {}).get("profile", {}).get("email")
                     if not email:
+                        logger.error("User does not have an email address in Slack profile")
+                        logger.debug(f"No email found for user_id: {slack_user_id}")
                         raise SlackAPIError(f"User {slack_user_id} does not have an email address in their Slack profile.")
                     
                     # Add to cache with LRU eviction
@@ -93,13 +96,14 @@ class SlackAdapter:
                         logger.debug("Cache full, evicted entry")
                     
                     self._email_cache[slack_user_id] = email
+                    logger.debug(f"Resolved Slack user to email: {email}")
                     return email
 
             except urllib.error.HTTPError as e:
                 if e.code == 429:
                     # Skip sleep on last attempt (no point retrying after)
                     if attempt == max_retries:
-                        logger.error(f"Rate limited on final attempt for {slack_user_id}")
+                        logger.error("Rate limited on final attempt")
                         break
                     
                     # The Receptionist is overwhelmed! Read the sign and wait.
@@ -123,7 +127,7 @@ class SlackAdapter:
             except urllib.error.URLError as e:
                 # Handle network timeouts and connection errors
                 if attempt == max_retries:
-                    logger.error(f"Network error on final attempt for {slack_user_id}: {e}")
+                    logger.error("Network error on final attempt")
                     raise SlackAPIError(f"Network error: {e}")
                 
                 logger.warning(f"Network error, retrying... (Attempt {attempt}/{max_retries})")
@@ -134,5 +138,5 @@ class SlackAdapter:
                 continue
 
         # If we exit the loop, we exhausted all retries
-        logger.error(f"Failed to fetch email for {slack_user_id} after {max_retries} retries.")
+        logger.error("Failed to fetch email after max retries")
         raise SlackRateLimitError("Slack API rate limit exceeded max retries.")
