@@ -39,7 +39,7 @@ class SlackWorkflow:
             WorkflowError: If URL is invalid or not from Slack
         """
         if not url or not url.startswith("https://hooks.slack.com/"):
-            raise WorkflowError(f"Invalid Slack response URL")
+            raise WorkflowError("Invalid Slack response URL")
 
     def _send_slack_reply(self, response_url: str, message: str, is_success: bool = True, max_retries: int = 3) -> None:
         """
@@ -75,7 +75,7 @@ class SlackWorkflow:
             
             try:
                 with urllib.request.urlopen(req, timeout=10) as response:  # nosec B310
-                    logger.debug(f"Slack reply sent successfully: {response.getcode()}")
+                    logger.debug("Slack reply sent successfully")
                     return
                     
             except urllib.error.HTTPError as e:
@@ -120,6 +120,13 @@ class SlackWorkflow:
         if not all([slack_user_id, response_url]):
             logger.error("Missing required fields in event payload")
             return
+        
+        # Validate response_url BEFORE try block to avoid unhandled exceptions in error handlers
+        try:
+            self._validate_response_url(response_url)
+        except WorkflowError as e:
+            logger.error(f"Invalid response_url: {e}")
+            return
 
         logger.info("Starting access request workflow")
 
@@ -129,7 +136,7 @@ class SlackWorkflow:
             aws_principal_id = self.identity.get_user_id_by_email(email)
             
             # Log at DEBUG level to avoid PII exposure
-            logger.debug(f"Identity mapped: Slack user -> email -> AWS principal")
+            logger.debug("Identity mapped successfully")
 
             # 2. Command Parsing
             parts = command_text.split()
@@ -176,13 +183,21 @@ class SlackWorkflow:
             self._send_slack_reply(response_url, success_msg, is_success=True)
 
         except (SlackAPIError, IdentityStoreError, WorkflowError) as e:
-            # Expected errors - log and notify user
-            logger.warning(f"Workflow error: {type(e).__name__}: {e}")
-            self._send_slack_reply(
-                response_url,
-                f"⚠️ Error: {str(e)}",
-                is_success=False
-            )
+            # Expected errors - log type but don't expose details to user
+            logger.warning(f"Workflow error: {type(e).__name__}")
+            
+            # Map exceptions to user-friendly messages (no PII)
+            if isinstance(e, SlackAPIError):
+                user_msg = "Unable to retrieve your Slack profile. Please try again."
+            elif isinstance(e, IdentityStoreError):
+                user_msg = "Unable to map your identity to AWS. Please contact your administrator."
+            elif isinstance(e, WorkflowError):
+                # WorkflowError messages are safe (no PII)
+                user_msg = str(e)
+            else:
+                user_msg = "An error occurred processing your request."
+            
+            self._send_slack_reply(response_url, f"⚠️ {user_msg}", is_success=False)
             
         except Exception as e:
             # Unexpected errors - log with full context but don't expose details
