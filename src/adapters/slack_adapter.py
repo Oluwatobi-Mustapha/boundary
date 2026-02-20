@@ -134,6 +134,7 @@ class SlackAdapter:
                 # Handle network timeouts and connection errors
                 if attempt == max_retries:
                     logger.error("Network error on final attempt")
+                    logger.debug(f"Network error details for user_id {slack_user_id}: {e}")
                     raise SlackAPIError(f"Network error: {e}")
                 
                 logger.warning(f"Network error, retrying... (Attempt {attempt}/{max_retries})")
