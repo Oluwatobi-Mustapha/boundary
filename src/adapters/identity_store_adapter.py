@@ -5,6 +5,7 @@ import time
 import re
 import random
 from collections import OrderedDict
+from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +14,7 @@ class IdentityStoreError(Exception):
     pass
 
 class IdentityStoreAdapter:
-    def __init__(self, identity_store_id: str, cache_max_size: int = 1000):
+    def __init__(self, identity_store_id: str, cache_max_size: int = 1000, cache_ttl_seconds: int = 300):
         """
         Initializes the Identity Store Adapter.
         Requires the AWS SSO Identity Store ID (e.g., d-1234567890).
@@ -21,19 +22,24 @@ class IdentityStoreAdapter:
         Args:
             identity_store_id: AWS Identity Store ID
             cache_max_size: Maximum number of entries to cache (default 1000)
+            cache_ttl_seconds: Time-to-live for cache entries in seconds (default 300 = 5 minutes)
         """
         if not identity_store_id or not identity_store_id.startswith("d-"):
             raise ValueError("A valid Identity Store ID (d-...) is required.")
         
         if cache_max_size <= 0:
             raise ValueError(f"cache_max_size must be positive, got {cache_max_size}")
+        
+        if cache_ttl_seconds <= 0:
+            raise ValueError(f"cache_ttl_seconds must be positive, got {cache_ttl_seconds}")
             
         self.identity_store_id = identity_store_id
         self.client = boto3.client('identitystore')
         
-        # LRU cache with bounded size to prevent memory leak
-        self._user_cache: OrderedDict[str, str] = OrderedDict()
+        # LRU cache with bounded size and TTL to prevent memory leak and stale data
+        self._user_cache: OrderedDict[str, Tuple[str, float]] = OrderedDict()
         self._cache_max_size = cache_max_size
+        self._cache_ttl_seconds = cache_ttl_seconds
     
     def __repr__(self):
         return f"IdentityStoreAdapter(store_id={self.identity_store_id})"
@@ -49,10 +55,19 @@ class IdentityStoreAdapter:
 
         # Check cache first
         if email in self._user_cache:
-            logger.info(f"Cache hit for Identity Store lookup: {email}")
-            # Move to end (mark as recently used)
-            self._user_cache.move_to_end(email)
-            return self._user_cache[email]
+            user_id, cached_at = self._user_cache[email]
+            age = time.time() - cached_at
+            
+            # Check if cache entry has expired (TTL)
+            if age < self._cache_ttl_seconds:
+                logger.debug("Cache hit for Identity Store lookup")
+                # Move to end (mark as recently used)
+                self._user_cache.move_to_end(email)
+                return user_id
+            else:
+                # Cache entry expired, remove it
+                logger.debug(f"Cache entry expired (age: {age:.1f}s, TTL: {self._cache_ttl_seconds}s)")
+                self._user_cache.pop(email)
 
         for attempt in range(1, max_retries + 1):
             try:
@@ -69,14 +84,15 @@ class IdentityStoreAdapter:
                 
                 user_id = response['UserId']
                 
-                # Add to cache with LRU eviction
+                # Add to cache with LRU eviction and TTL
                 if len(self._user_cache) >= self._cache_max_size:
                     # Remove oldest entry (FIFO/LRU)
                     evicted_email = next(iter(self._user_cache))
                     self._user_cache.pop(evicted_email)
                     logger.debug("Cache full, evicted entry")
                 
-                self._user_cache[email] = user_id
+                # Store user_id with timestamp for TTL validation
+                self._user_cache[email] = (user_id, time.time())
                 # Log at DEBUG level to avoid PII exposure in production logs
                 logger.debug(f"Resolved {email} to AWS User ID: {user_id}")
                 return user_id
