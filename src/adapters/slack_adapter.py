@@ -3,6 +3,8 @@ import urllib.error
 import json
 import time
 import logging
+import random
+from collections import OrderedDict
 
 logger = logging.getLogger(__name__)
 
@@ -15,16 +17,23 @@ class SlackRateLimitError(SlackAPIError):
     pass
 
 class SlackAdapter:
-    def __init__(self, bot_token: str):
+    def __init__(self, bot_token: str, cache_max_size: int = 1000):
         """
         Initializes the Slack Adapter with the xoxb- Bot Token.
+        
+        Args:
+            bot_token: Slack Bot Token (xoxb-...)
+            cache_max_size: Maximum number of entries to cache (default 1000)
         """
         if not bot_token or not bot_token.startswith("xoxb-"):
             raise ValueError("A valid Slack Bot Token (xoxb-) is required.")
         
         self.bot_token = bot_token
         self.base_url = "https://slack.com/api"
-        self._email_cache: dict[str, str] = {}
+        
+        # LRU cache with bounded size to prevent memory leak
+        self._email_cache: OrderedDict[str, str] = OrderedDict()
+        self._cache_max_size = cache_max_size
     
     def __repr__(self):
         return "SlackAdapter(token=***REDACTED***)"
@@ -40,6 +49,8 @@ class SlackAdapter:
         # Check cache first
         if slack_user_id in self._email_cache:
             logger.info(f"Cache hit for {slack_user_id}")
+            # Move to end (mark as recently used)
+            self._email_cache.move_to_end(slack_user_id)
             return self._email_cache[slack_user_id]
         
         url = f"{self.base_url}/users.info?user={slack_user_id}"
@@ -71,7 +82,13 @@ class SlackAdapter:
                     if not email:
                         raise SlackAPIError(f"User {slack_user_id} does not have an email address in their Slack profile.")
                     
-                    # Cache the result
+                    # Add to cache with LRU eviction
+                    if len(self._email_cache) >= self._cache_max_size:
+                        # Remove oldest entry (FIFO/LRU)
+                        evicted_id = next(iter(self._email_cache))
+                        self._email_cache.pop(evicted_id)
+                        logger.debug(f"Cache full, evicted: {evicted_id}")
+                    
                     self._email_cache[slack_user_id] = email
                     return email
 
@@ -106,8 +123,11 @@ class SlackAdapter:
                     logger.error(f"Network error on final attempt for {slack_user_id}: {e}")
                     raise SlackAPIError(f"Network error: {e}")
                 
-                logger.warning(f"Network error, retrying... (Attempt {attempt}/{max_retries}): {e}")
-                time.sleep(2 ** (attempt - 1))  # Exponential backoff
+                logger.warning(f"Network error, retrying... (Attempt {attempt}/{max_retries})")
+                # Exponential backoff with jitter to prevent thundering herd
+                backoff = 2 ** (attempt - 1)
+                jitter = random.uniform(0, backoff * 0.5)
+                time.sleep(backoff + jitter)
                 continue
 
         # If we exit the loop, we exhausted all retries
