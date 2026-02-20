@@ -49,9 +49,9 @@ class SlackAdapter:
         
         Note: Slack user IDs start with U (standard) or W (Enterprise Grid).
         """
-        # Validate Slack user ID format: U or W followed by 8+ alphanumeric characters
-        # Slack's format: ^[UW][A-Z0-9]{8,}$ (supports variable lengths)
-        if not slack_user_id or not re.match(r'^[UW][A-Z0-9]{8,}$', slack_user_id):
+        # Validate Slack user ID format: U or W followed by 8-12 alphanumeric characters
+        # Slack's format: ^[UW][A-Z0-9]{8,12}$ (observed lengths: 9-11 chars total)
+        if not slack_user_id or not re.match(r'^[UW][A-Z0-9]{8,12}$', slack_user_id):
             raise ValueError(f"Invalid Slack user ID format: {slack_user_id}")
         
         # Check cache first
