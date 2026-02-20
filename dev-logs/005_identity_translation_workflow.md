@@ -81,7 +81,7 @@ Implements the complete request lifecycle:
 
 ### Error Handling Strategy
 
-Three-tier exception handling:
+Four-tier exception handling:
 
 1. **SlackAPIError:** "Unable to retrieve your Slack profile. Please try again."
 2. **IdentityStoreError:** "Unable to map your identity to AWS. Please contact your administrator."
