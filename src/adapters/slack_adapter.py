@@ -109,7 +109,7 @@ class SlackAdapter:
                     
                     # Store email with timestamp for TTL validation
                     self._email_cache[slack_user_id] = (email, time.time())
-                    logger.debug(f"Resolved Slack user to email: {email}")
+                    logger.debug("Successfully resolved Slack user to email")
                     return email
 
             except urllib.error.HTTPError as e:
