@@ -199,6 +199,64 @@ Image: ![alt text](image.png)
 - ISO 27001:2022 A.17.1.1 (Planning information security continuity)
 - NIST 800-53 SI-13 (Predictable Failure Prevention)
 
+#### Threat E-3: Memory Exhaustion via Unbounded Cache
+
+**Description:** Long-running Lambda functions accumulate unlimited cache entries (Slack user mappings, AWS Identity Store lookups), eventually exhausting memory and causing OOM crashes.
+
+**Mitigation:**
+
+- **Bounded LRU Cache:** Both SlackAdapter and IdentityStoreAdapter enforce max 1000 entries using OrderedDict
+- Oldest entries evicted automatically when limit reached
+- Cache size validated at initialization (must be > 0)
+
+**Compliance Alignment:**
+
+- ISO 27001:2022 A.12.1.3 (Capacity management)
+- NIST 800-53 SC-5 (Denial of Service Protection)
+- SOC 2 CC7.2 (System Monitoring)
+
+---
+
+### F. Privilege Escalation
+
+#### Threat F-1: Cache Poisoning Attack
+
+**Description:** Attacker exploits race condition or API manipulation to inject false identity mappings into adapter caches (e.g., map attacker's Slack ID to victim's AWS Principal ID).
+
+**Mitigation:**
+
+- **Authoritative Source Validation:** All cache entries sourced directly from Slack Web API and AWS Identity Store API
+- **HTTPS-Only Communication:** All API calls use TLS 1.2+ with certificate validation
+- **Input Validation:** Slack user IDs validated against format `^U[A-Z0-9]{10}$`, emails validated via regex
+- **Short TTL:** Cache entries expire after 5 minutes, limiting exposure window
+
+**Compliance Alignment:**
+
+- ISO 27001:2022 A.14.1.2 (Securing application services on public networks)
+- NIST 800-53 SC-8 (Transmission Confidentiality and Integrity)
+- SOC 2 CC6.1 (Logical and Physical Access Controls)
+
+---
+
+### G. Privacy & Data Protection
+
+#### Threat G-1: PII Leakage in Application Logs
+
+**Description:** User emails and AWS Principal IDs logged at INFO/WARNING levels, exposing PII in CloudWatch Logs accessible to operations teams.
+
+**Mitigation:**
+
+- **DEBUG-Level PII Logging:** All emails and user IDs logged exclusively at DEBUG level
+- Production Lambda functions run at INFO level by default (DEBUG disabled)
+- Generic error messages sent to users ("Unable to map your identity") without exposing internal details
+
+**Compliance Alignment:**
+
+- ISO 27001:2022 A.18.1.4 (Privacy and protection of personally identifiable information)
+- NIST 800-53 SI-11 (Error Handling)
+- SOC 2 CC6.7 (Confidentiality)
+- GDPR Article 32 (Security of Processing)
+
 ---
 
 ## 3. Residual Risks (Accepted / To Be Addressed)
