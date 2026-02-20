@@ -74,7 +74,7 @@ class SlackWorkflow:
             )
             
             try:
-                with urllib.request.urlopen(req, timeout=10) as response:  # nosec B310
+                with urllib.request.urlopen(req, timeout=10):  # nosec B310
                     logger.debug("Slack reply sent successfully")
                     return
                     
@@ -88,7 +88,7 @@ class SlackWorkflow:
                 logger.warning(f"Slack reply failed (HTTP {e.code}), retrying... (Attempt {attempt}/{max_retries})")
                 time.sleep(backoff + jitter)
                 
-            except urllib.error.URLError as e:
+            except urllib.error.URLError:
                 if attempt == max_retries:
                     logger.error(f"Network error sending Slack reply after {max_retries} attempts")
                     return  # Fail-open: don't crash workflow if notification fails
@@ -133,7 +133,7 @@ class SlackWorkflow:
         try:
             # 1. Identity Translation Chain
             email = self.slack.get_user_email(slack_user_id)
-            aws_principal_id = self.identity.get_user_id_by_email(email)
+            _ = self.identity.get_user_id_by_email(email)  # Validate identity exists
             
             # Log at DEBUG level to avoid PII exposure
             logger.debug("Identity mapped successfully")
