@@ -117,7 +117,7 @@ class SlackWorkflow:
         response_url = event.get('response_url')
 
         # Validate required fields
-        if not all([slack_user_id, response_url]):
+        if not slack_user_id or not response_url:
             logger.error("Missing required fields in event payload")
             return
         
