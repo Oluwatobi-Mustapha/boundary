@@ -97,13 +97,15 @@ We will implement a **Two-Adapter Identity Translation Chain**:
 
 Both adapters implement:
 - **Bounded LRU Cache** (max 1000 entries) using OrderedDict to prevent memory exhaustion in long-running Lambda functions.
+- **Time-Based Expiration (TTL)**: Cache entries expire after 5 minutes (300 seconds) to prevent stale identity mappings after user departures or email changes.
 - **Exponential Backoff with Jitter** (0-50% random jitter) to handle rate limits (Slack HTTP 429, AWS ThrottlingException) and prevent thundering herd.
-- **PII Protection**: All emails and user IDs are logged at DEBUG level only, never at INFO/WARNING in production logs.
+- **PII Protection**: All emails and user IDs are never logged at INFO/ERROR/WARNING levels in production logs.
 
 ### 5th Consequences
 
 * **Positive:** Decoupled adapters enable independent unit testing (mock Slack without AWS, and vice versa).
 * **Positive:** Bounded cache prevents memory leaks while maintaining sub-millisecond lookup performance for repeat requests.
+* **Positive:** 5-minute TTL limits exposure window for compromised accounts and prevents stale mappings after user changes.
 * **Positive:** Jittered retry logic prevents cascading failures during API rate limit events.
 * **Negative:** Two sequential API calls add ~200-500ms latency compared to a hypothetical direct Slack-to-AWS mapping (which doesn't exist).
-* **Negative:** Cache invalidation is time-based only (5-minute TTL); if a user's email changes in Slack or AWS, stale data may be served until cache expires.
+* **Negative:** Cache entries may become stale for up to 5 minutes if a user's email changes in Slack or AWS Identity Store.
