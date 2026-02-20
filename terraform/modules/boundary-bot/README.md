@@ -33,9 +33,9 @@ It runs a scheduled cleanup process that revokes expired access grants and keeps
 ## Inputs
 
 | Name | Description |
-|------|-------------|
+| ---- | ----------- |
 | `dynamodb_table_name` | The name of the state store table to scan. |
-| `lambda_timeout` | Max duration for the janitor run (default `60s`). |
-| `schedule_expression` | EventBridge schedule (default `rate(1 minute)`). |
+| `lambda_timeout` | Maximum duration for the janitor run (default: `60s`). |
+| `schedule_expression` | EventBridge schedule expression (default: `rate(1 minute)`). |
 
 ***Shared locals/tags/naming conventions (used when >1 live root exists)***
