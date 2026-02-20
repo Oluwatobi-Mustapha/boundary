@@ -1,4 +1,3 @@
-import json
 import logging
 import boto3
 import os
@@ -93,7 +92,6 @@ def lambda_handler(event, context):
     
     user_id = parsed_body.get('user_id', [''])[0]
     command_text = parsed_body.get('text', [''])[0]
-    response_url = parsed_body.get('response_url', [''])[0]
     
     logger.info(f"User {user_id} requested: {command_text}")
 
