@@ -55,10 +55,19 @@ class IdentityStoreAdapter:
 
         # Check cache first
         if email in self._user_cache:
-            logger.debug("Cache hit for Identity Store lookup")
-            # Move to end (mark as recently used)
-            self._user_cache.move_to_end(email)
-            return self._user_cache[email]
+            user_id, cached_at = self._user_cache[email]
+            age = time.time() - cached_at
+            
+            # Check if cache entry has expired (TTL)
+            if age < self._cache_ttl_seconds:
+                logger.debug("Cache hit for Identity Store lookup")
+                # Move to end (mark as recently used)
+                self._user_cache.move_to_end(email)
+                return user_id
+            else:
+                # Cache entry expired, remove it
+                logger.debug(f"Cache entry expired (age: {age:.1f}s, TTL: {self._cache_ttl_seconds}s)")
+                self._user_cache.pop(email)
 
         for attempt in range(1, max_retries + 1):
             try:
@@ -82,7 +91,8 @@ class IdentityStoreAdapter:
                     self._user_cache.pop(evicted_email)
                     logger.debug("Cache full, evicted entry")
                 
-                self._user_cache[email] = user_id
+                # Store user_id with timestamp for TTL validation
+                self._user_cache[email] = (user_id, time.time())
                 # Successfully resolved identity without logging PII
                 logger.debug("Successfully resolved email to AWS User ID")
                 return user_id

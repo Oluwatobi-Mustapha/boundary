@@ -57,10 +57,19 @@ class SlackAdapter:
         
         # Check cache first
         if slack_user_id in self._email_cache:
-            logger.debug("Cache hit for Slack user lookup")
-            # Move to end (mark as recently used)
-            self._email_cache.move_to_end(slack_user_id)
-            return self._email_cache[slack_user_id]
+            email, cached_at = self._email_cache[slack_user_id]
+            age = time.time() - cached_at
+            
+            # Check if cache entry has expired (TTL)
+            if age < self._cache_ttl_seconds:
+                logger.debug("Cache hit for Slack user lookup")
+                # Move to end (mark as recently used)
+                self._email_cache.move_to_end(slack_user_id)
+                return email
+            else:
+                # Cache entry expired, remove it
+                logger.debug(f"Cache entry expired (age: {age:.1f}s, TTL: {self._cache_ttl_seconds}s)")
+                self._email_cache.pop(slack_user_id)
         
         url = f"{self.base_url}/users.info?user={slack_user_id}"
         
@@ -101,7 +110,8 @@ class SlackAdapter:
                         self._email_cache.pop(evicted_id)
                         logger.debug("Cache full, evicted entry")
                     
-                    self._email_cache[slack_user_id] = email
+                    # Store email with timestamp for TTL validation
+                    self._email_cache[slack_user_id] = (email, time.time())
                     logger.debug("Successfully resolved Slack user to email")
                     return email
 
