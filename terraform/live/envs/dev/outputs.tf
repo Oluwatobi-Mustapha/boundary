@@ -12,3 +12,8 @@ output "dynamodb_table_name" {
   description = "The DynamoDB Table for State Persistence"
   value       = module.boundary_state.table_name
 }
+
+output "slack_webhook_url" {
+  value       = module.boundary_bot.slack_webhook_url
+  description = "The public webhook URL for the Slack App"
+}
