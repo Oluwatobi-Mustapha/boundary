@@ -49,7 +49,7 @@ class IdentityStoreAdapter:
 
         # Check cache first
         if email in self._user_cache:
-            logger.info(f"Cache hit for Identity Store lookup: {email}")
+            logger.debug("Cache hit for Identity Store lookup")
             # Move to end (mark as recently used)
             self._user_cache.move_to_end(email)
             return self._user_cache[email]
@@ -82,7 +82,8 @@ class IdentityStoreAdapter:
                 return user_id
                 
             except self.client.exceptions.ResourceNotFoundException:
-                logger.error(f"User not found in Identity Store {self.identity_store_id}")
+                logger.error("User not found in Identity Store")
+                logger.debug(f"Email not found: {email}")
                 raise IdentityStoreError(f"Email '{email}' is not registered in AWS Identity Center")
             
             except botocore.exceptions.ClientError as e:
@@ -106,7 +107,8 @@ class IdentityStoreAdapter:
                     time.sleep(sleep_time)
                     continue
                 else:
-                    logger.error(f"AWS API error for {email}: {error_code} - {e}")
+                    logger.error(f"AWS API error: {error_code}")
+                    logger.debug(f"AWS API error for email {email}: {error_code} - {e}")
                     raise IdentityStoreError(f"AWS Identity Store error: {error_code}")
             
             except Exception as e:
