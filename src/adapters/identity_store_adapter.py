@@ -24,6 +24,9 @@ class IdentityStoreAdapter:
         """
         if not identity_store_id or not identity_store_id.startswith("d-"):
             raise ValueError("A valid Identity Store ID (d-...) is required.")
+        
+        if cache_max_size <= 0:
+            raise ValueError(f"cache_max_size must be positive, got {cache_max_size}")
             
         self.identity_store_id = identity_store_id
         self.client = boto3.client('identitystore')
