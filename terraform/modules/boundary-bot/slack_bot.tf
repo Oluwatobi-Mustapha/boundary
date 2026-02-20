@@ -22,6 +22,30 @@ resource "aws_iam_role_policy_attachment" "slack_bot_basic_logs" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# Grab the current AWS Account ID and Region dynamically
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# ------------------------------------------------------------------------------
+# 1.5 SLACK BOT IAM POLICY (The Vault Badge)
+# ------------------------------------------------------------------------------
+resource "aws_iam_role_policy" "slack_bot_ssm" {
+  name = "slack-bot-ssm-policy"
+  role = aws_iam_role.slack_bot_execution.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "ssm:GetParameter"
+        # We strictly limit this to ONLY the Slack signing secret
+        Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/boundary/slack/signing_secret"
+      }
+    ]
+  })
+}
+
 # ------------------------------------------------------------------------------
 # 2. SLACK BOT LAMBDA FUNCTION
 # ------------------------------------------------------------------------------
