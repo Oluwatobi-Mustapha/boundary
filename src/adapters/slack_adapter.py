@@ -4,6 +4,7 @@ import json
 import time
 import logging
 import random
+import re
 from collections import OrderedDict
 from typing import Tuple
 
@@ -49,11 +50,15 @@ class SlackAdapter:
 
     def get_user_email(self, slack_user_id: str, max_retries: int = 3) -> str:
         """
-        Translates a Slack user ID (e.g., U123456) into a corporate email address.
+        Translates a Slack user ID (e.g., U1234ABCD, W1234ABCD) into a corporate email address.
         Includes robust handling for HTTP 429 Rate Limits with caching.
+        
+        Note: Slack user IDs start with U (standard) or W (Enterprise Grid).
         """
-        if not slack_user_id or not slack_user_id.startswith("U"):
-            raise ValueError(f"Invalid Slack user ID: {slack_user_id}")
+        # Validate Slack user ID format: U or W followed by 8-12 alphanumeric characters
+        # Slack's format: ^[UW][A-Z0-9]{8,12}$ (allows 9-13 chars total, observed: 9-11)
+        if not slack_user_id or not re.match(r'^[UW][A-Z0-9]{8,12}$', slack_user_id):
+            raise ValueError(f"Invalid Slack user ID format: {slack_user_id}")
         
         # Check cache first
         if slack_user_id in self._email_cache:
