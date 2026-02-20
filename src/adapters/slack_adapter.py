@@ -87,7 +87,7 @@ class SlackAdapter:
                         # Remove oldest entry (FIFO/LRU)
                         evicted_id = next(iter(self._email_cache))
                         self._email_cache.pop(evicted_id)
-                        logger.debug(f"Cache full, evicted entry")
+                        logger.debug("Cache full, evicted entry")
                     
                     self._email_cache[slack_user_id] = email
                     return email
