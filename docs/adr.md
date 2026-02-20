@@ -67,7 +67,7 @@ We will employ **Out-of-Band Bootstrapping**. Engineers must manually inject the
 
 ### 4th Context
 
-The API Gateway webhook is publicly accessible. We must guarantee that only Slack can invoke the Policy Engine and prevent malicious actors from submitting spoofed access requests. 
+The API Gateway webhook is publicly accessible. We must guarantee that only Slack can invoke the Policy Engine and prevent malicious actors from submitting spoofed access requests.  
 
 ### 4th Decision
 
