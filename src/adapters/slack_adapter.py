@@ -44,11 +44,14 @@ class SlackAdapter:
 
     def get_user_email(self, slack_user_id: str, max_retries: int = 3) -> str:
         """
-        Translates a Slack user ID (e.g., U123456) into a corporate email address.
+        Translates a Slack user ID (e.g., U1234ABCD, W1234ABCD) into a corporate email address.
         Includes robust handling for HTTP 429 Rate Limits with caching.
+        
+        Note: Slack user IDs start with U (standard) or W (Enterprise Grid).
         """
-        # Validate Slack user ID format: U followed by exactly 10 alphanumeric characters
-        if not slack_user_id or not re.match(r'^U[A-Z0-9]{10}$', slack_user_id):
+        # Validate Slack user ID format: U or W followed by 8+ alphanumeric characters
+        # Slack's format: ^[UW][A-Z0-9]{8,}$ (supports variable lengths)
+        if not slack_user_id or not re.match(r'^[UW][A-Z0-9]{8,}$', slack_user_id):
             raise ValueError(f"Invalid Slack user ID format: {slack_user_id}")
         
         # Check cache first
