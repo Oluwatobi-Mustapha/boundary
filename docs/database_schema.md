@@ -75,9 +75,9 @@ without scanning the entire table.
 | `expires_at` | Number | Time when access must be revoked |
 | `revoked_at` | Number | Time when access was actually revoked |
 | `ttl` | Number | DynamoDB TTL attribute (e.g., expires_at + 90 days) for auto-deletion |
-| `slack_user_id` | String | The Slack ID (e.g., U123456) for ChatOps mapping and DMs |
-| `slack_response_url` | String | Temporary webhook for asynchronous Slack replies |
-| `slack_channel_id` | String | Slack channel where the request originated (for approvals) |
+| `slack_user_id` | String | The Slack ID (e.g., U123456) for ChatOps mapping and DMs. **ACTIVE:** Used by SlackWorkflow for identity translation chain (Slack ID → Email → AWS Principal ID). |
+| `slack_response_url` | String | Temporary webhook for asynchronous Slack replies. **ACTIVE:** Used by SlackWorkflow to send success/error messages after policy evaluation. Validated to prevent URL injection attacks. |
+| `slack_channel_id` | String | Slack channel where the request originated (for approvals). **RESERVED:** Not yet used by current implementation. |
 
 ---
 
@@ -107,8 +107,20 @@ without scanning the entire table.
 
 ### 5. Asynchronous ChatOps Notifications
 
-- The Policy Engine reads the slack_response_url to send final provision/deny messages back to the user after background evaluation completes.
-- The Janitor reads the slack_user_id to send a direct message when access is automatically revoked.
+- **SlackWorkflow** reads `slack_response_url` to send final provision/deny messages back to the user after policy evaluation completes
+- **SlackWorkflow** uses `slack_user_id` to initiate identity translation chain: Slack User ID → Email (via SlackAdapter) → AWS Principal ID (via IdentityStoreAdapter)
+- The Janitor (future) will read `slack_user_id` to send a direct message when access is automatically revoked
+- **PII Protection:** Emails and AWS Principal IDs derived from `slack_user_id` are logged at DEBUG level only, never at INFO/WARNING in production
+
+---
+
+## Security Notes
+
+### Slack Field Usage
+
+- `slack_response_url` is validated against `https://hooks.slack.com/` prefix before use to prevent URL injection attacks
+- `slack_user_id` is validated against format `^U[A-Z0-9]{10}$` in SlackAdapter
+- All Slack-related fields are optional (system supports CLI-based requests without Slack metadata)
 
 ---
 

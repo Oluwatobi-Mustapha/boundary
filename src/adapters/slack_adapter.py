@@ -5,6 +5,7 @@ import time
 import logging
 import random
 from collections import OrderedDict
+from typing import Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -17,13 +18,14 @@ class SlackRateLimitError(SlackAPIError):
     pass
 
 class SlackAdapter:
-    def __init__(self, bot_token: str, cache_max_size: int = 1000):
+    def __init__(self, bot_token: str, cache_max_size: int = 1000, cache_ttl_seconds: int = 300):
         """
         Initializes the Slack Adapter with the xoxb- Bot Token.
         
         Args:
             bot_token: Slack Bot Token (xoxb-...)
             cache_max_size: Maximum number of entries to cache (default 1000)
+            cache_ttl_seconds: Time-to-live for cache entries in seconds (default 300 = 5 minutes)
         """
         if not bot_token or not bot_token.startswith("xoxb-"):
             raise ValueError("A valid Slack Bot Token (xoxb-) is required.")
@@ -31,12 +33,16 @@ class SlackAdapter:
         if cache_max_size <= 0:
             raise ValueError(f"cache_max_size must be positive, got {cache_max_size}")
         
+        if cache_ttl_seconds <= 0:
+            raise ValueError(f"cache_ttl_seconds must be positive, got {cache_ttl_seconds}")
+        
         self.bot_token = bot_token
         self.base_url = "https://slack.com/api"
         
-        # LRU cache with bounded size to prevent memory leak
-        self._email_cache: OrderedDict[str, str] = OrderedDict()
+        # LRU cache with bounded size and TTL to prevent memory leak and stale data
+        self._email_cache: OrderedDict[str, Tuple[str, float]] = OrderedDict()
         self._cache_max_size = cache_max_size
+        self._cache_ttl_seconds = cache_ttl_seconds
     
     def __repr__(self):
         return "SlackAdapter(token=***REDACTED***)"
@@ -88,7 +94,7 @@ class SlackAdapter:
                         logger.debug(f"No email found for user_id: {slack_user_id}")
                         raise SlackAPIError(f"User {slack_user_id} does not have an email address in their Slack profile.")
                     
-                    # Add to cache with LRU eviction
+                    # Add to cache with LRU eviction and TTL
                     if len(self._email_cache) >= self._cache_max_size:
                         # Remove oldest entry (FIFO/LRU)
                         evicted_id = next(iter(self._email_cache))
