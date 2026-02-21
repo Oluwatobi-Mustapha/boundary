@@ -171,13 +171,12 @@ class SlackWorkflow:
             if len(parts) < 3:
                 raise WorkflowError("Usage: /boundary <AccountID> <PermissionSet> <Hours>")
             
-            account_id = validate_account_id(parts[0])
-            permission_set = parts[1]
-            
             try:
+                account_id = validate_account_id(parts[0])
+                permission_set = parts[1]
                 duration_hours = validate_duration(float(parts[2]))
             except ValueError as e:
-                raise WorkflowError(f"Invalid duration: {e}")
+                raise WorkflowError(f"Invalid input: {e}")
 
             # 3. Policy Evaluation
             logger.info(f"Fetching AWS Context for account {account_id}...")
