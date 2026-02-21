@@ -4,7 +4,7 @@ resource "aws_lambda_function" "workflow_manager" {
   handler       = "workflows.access_workflow.lambda_handler"
   runtime       = "python3.11"
   timeout       = 60
-  
+
   filename         = data.archive_file.lambda_package.output_path
   source_code_hash = data.archive_file.lambda_package.output_base64sha256
 
@@ -43,4 +43,28 @@ resource "aws_iam_role" "workflow_execution_role" {
 resource "aws_iam_role_policy_attachment" "workflow_basic_execution" {
   role       = aws_iam_role.workflow_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole"
+}
+
+resource "aws_iam_role_policy" "workflow_dynamodb" {
+  name = "workflow-dynamodb-access"
+  role = aws_iam_role.workflow_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "DynamoDBAccess"
+        Effect = "Allow"
+        Action = [
+          "dynamodb:Query",
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem"
+        ]
+        Resource = [
+          var.dynamodb_table_arn,
+          "${var.dynamodb_table_arn}/index/*"
+        ]
+      }
+    ]
+  })
 }
