@@ -191,6 +191,7 @@ class SlackWorkflow:
                 permission_set_name=permission_set,
                 account_id=account_id,
                 instance_arn=os.environ['SSO_INSTANCE_ARN'],
+                rule_id="",  # Will be populated by policy engine on ALLOW
                 requested_at=time.time(),
                 expires_at=time.time() + (duration_hours * 3600)
             )
