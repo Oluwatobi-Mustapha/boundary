@@ -10,7 +10,7 @@ import time
 import uuid
 
 logger = logging.getLogger()
-logger.setLevel(logging.INFO)
+logger.setLevel(os.environ.get("LOG_LEVEL", "INFO").upper())
 
 # --- 1. THE WARM START CACHE ---
 # Initialize the boto3 clients OUTSIDE the handler so they stay warm between invocations
@@ -40,7 +40,14 @@ def verify_slack_signature(headers: dict, body: str, secret: str) -> bool:
     slack_signature = headers.get('x-slack-signature', '')
     slack_request_timestamp = headers.get('x-slack-request-timestamp', '0')
 
-    if abs(time.time() - int(slack_request_timestamp)) > 60 * 5:
+    # Validate timestamp is numeric before conversion
+    try:
+        timestamp_int = int(slack_request_timestamp)
+    except (ValueError, TypeError):
+        logger.error("Invalid timestamp format in Slack signature")
+        return False
+
+    if abs(time.time() - timestamp_int) > 60 * 5:
         logger.error("Signature verification failed: Timestamp is older than 5 minutes. Possible replay attack!")
         return False
 
