@@ -4,17 +4,57 @@ import json
 import logging
 import random
 import time
+import os
 from typing import Dict, Any
 
-from src.adapters.slack_adapter import SlackAdapter, SlackAPIError
-from src.adapters.identity_store_adapter import IdentityStoreAdapter, IdentityStoreError
-from src.validators import validate_duration
+import boto3
+
+try:
+    from adapters.slack_adapter import SlackAdapter, SlackAPIError
+    from adapters.identity_store_adapter import IdentityStoreAdapter, IdentityStoreError
+    from validators import validate_duration
+except ImportError:
+    from src.adapters.slack_adapter import SlackAdapter, SlackAPIError
+    from src.adapters.identity_store_adapter import IdentityStoreAdapter, IdentityStoreError
+    from src.validators import validate_duration
 
 logger = logging.getLogger(__name__)
+logger.setLevel(os.environ.get("LOG_LEVEL", "INFO").upper())
+
+ssm = boto3.client("ssm")
+CACHED_BOT_TOKEN = None
+DEFAULT_BOT_TOKEN_PARAMETER = "/boundary/slack/bot_token"
 
 class WorkflowError(Exception):
     """Base exception for workflow errors."""
     pass
+
+class WorkflowBootstrapError(WorkflowError):
+    """Raised when the Lambda cannot initialize required dependencies."""
+    pass
+
+def get_bot_token() -> str:
+    """
+    Retrieves Slack bot token from SSM Parameter Store with warm-start caching.
+    """
+    global CACHED_BOT_TOKEN
+    if CACHED_BOT_TOKEN:
+        return CACHED_BOT_TOKEN
+
+    parameter_name = os.environ.get("SLACK_BOT_TOKEN_PARAM", DEFAULT_BOT_TOKEN_PARAMETER)
+    logger.info("Cold start: fetching Slack bot token from SSM")
+
+    try:
+        response = ssm.get_parameter(Name=parameter_name, WithDecryption=True)
+        token = response.get("Parameter", {}).get("Value")
+        if not token:
+            raise WorkflowBootstrapError("Slack bot token parameter is empty")
+
+        CACHED_BOT_TOKEN = token
+        return CACHED_BOT_TOKEN
+    except Exception as e:
+        logger.error(f"Failed to fetch bot token from SSM: {type(e).__name__}")
+        raise WorkflowBootstrapError("Failed to fetch Slack bot token from SSM") from e
 
 class SlackWorkflow:
     def __init__(self, slack_adapter: SlackAdapter, identity_adapter: IdentityStoreAdapter):
@@ -204,3 +244,54 @@ class SlackWorkflow:
                 "⚠️ An unexpected error occurred. Please contact support.",
                 is_success=False
             )
+
+def _bootstrap_workflow() -> SlackWorkflow:
+    """
+    Initializes shared adapters required for workflow processing.
+    """
+    bot_token = get_bot_token()
+    identity_store_id = os.environ.get("IDENTITY_STORE_ID")
+
+    if not identity_store_id:
+        raise WorkflowBootstrapError("Missing required environment variable: IDENTITY_STORE_ID")
+
+    slack_adapter = SlackAdapter(bot_token)
+    identity_adapter = IdentityStoreAdapter(identity_store_id)
+    return SlackWorkflow(slack_adapter, identity_adapter)
+
+def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, int]:
+    """
+    Entry point triggered by SQS event source mapping.
+    """
+    try:
+        workflow = _bootstrap_workflow()
+    except Exception:
+        logger.error("CRITICAL: Failed to bootstrap workflow environment", exc_info=True)
+        raise
+
+    processed = 0
+    malformed = 0
+
+    for record in event.get("Records", []):
+        message_id = record.get("messageId", "unknown")
+        raw_body = record.get("body", "{}")
+
+        try:
+            ticket = json.loads(raw_body)
+        except json.JSONDecodeError:
+            logger.error(f"Failed to parse SQS message body as JSON. Discarding message_id={message_id}")
+            malformed += 1
+            continue
+
+        try:
+            logger.info(f"Processing ticket from SQS: {message_id}")
+            workflow.process_request(ticket)
+            processed += 1
+        except Exception:
+            logger.error(f"Unexpected error processing SQS record message_id={message_id}", exc_info=True)
+            raise
+
+    return {
+        "processed": processed,
+        "malformed": malformed
+    }

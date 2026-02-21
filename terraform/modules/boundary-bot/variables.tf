@@ -40,3 +40,9 @@ variable "extra_env_vars" {
   type        = map(string)
   default     = {}
 }
+
+variable "slack_bot_token_parameter_name" {
+  description = "SSM Parameter Store path for the Slack bot token used by workflow manager"
+  type        = string
+  default     = "/boundary/slack/bot_token"
+}

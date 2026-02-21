@@ -10,9 +10,11 @@ resource "aws_lambda_function" "workflow_manager" {
 
   environment {
     variables = {
-      ENVIRONMENT    = var.environment
-      DYNAMODB_TABLE = var.dynamodb_table_name
-      LOG_LEVEL      = "INFO"
+      ENVIRONMENT           = var.environment
+      DYNAMODB_TABLE        = var.dynamodb_table_name
+      IDENTITY_STORE_ID     = var.identity_store_id
+      SLACK_BOT_TOKEN_PARAM = var.slack_bot_token_parameter_name
+      LOG_LEVEL             = "INFO"
     }
   }
 }
@@ -45,6 +47,9 @@ resource "aws_iam_role_policy_attachment" "workflow_basic_execution" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaSQSQueueExecutionRole"
 }
 
+data "aws_caller_identity" "workflow_current" {}
+data "aws_region" "workflow_current" {}
+
 resource "aws_iam_role_policy" "workflow_dynamodb" {
   name = "workflow-dynamodb-access"
   role = aws_iam_role.workflow_execution_role.id
@@ -64,6 +69,44 @@ resource "aws_iam_role_policy" "workflow_dynamodb" {
           var.dynamodb_table_arn,
           "${var.dynamodb_table_arn}/index/*"
         ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "workflow_ssm_access" {
+  name = "workflow-ssm-access"
+  role = aws_iam_role.workflow_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "GetSlackBotTokenParameter"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter"
+        ]
+        Resource = "arn:aws:ssm:${data.aws_region.workflow_current.name}:${data.aws_caller_identity.workflow_current.account_id}:parameter/${trimprefix(var.slack_bot_token_parameter_name, "/")}"
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "workflow_identitystore_access" {
+  name = "workflow-identitystore-access"
+  role = aws_iam_role.workflow_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "IdentityStoreGetUserId"
+        Effect = "Allow"
+        Action = [
+          "identitystore:GetUserId"
+        ]
+        Resource = "*"
       }
     ]
   })
