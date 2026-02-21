@@ -149,9 +149,8 @@ class IdentityStoreAdapter:
         Raises:
             IdentityStoreError: If the query fails
         """
-        group_ids = []
-        
         for attempt in range(1, max_retries + 1):
+            group_ids = []  # Reset on each retry to avoid duplicates
             try:
                 paginator = self.client.get_paginator('list_group_memberships_for_member')
                 page_iterator = paginator.paginate(
