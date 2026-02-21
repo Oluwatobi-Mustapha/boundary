@@ -10,9 +10,11 @@ resource "aws_lambda_function" "workflow_manager" {
 
   environment {
     variables = {
-      ENVIRONMENT    = var.environment
-      DYNAMODB_TABLE = var.dynamodb_table_name
-      LOG_LEVEL      = "INFO"
+      ENVIRONMENT       = var.environment
+      DYNAMODB_TABLE    = var.dynamodb_table_name
+      LOG_LEVEL         = "INFO"
+      IDENTITY_STORE_ID = var.identity_store_id
+      SSO_INSTANCE_ARN  = var.sso_instance_arn
     }
   }
 }
@@ -64,6 +66,43 @@ resource "aws_iam_role_policy" "workflow_dynamodb" {
           var.dynamodb_table_arn,
           "${var.dynamodb_table_arn}/index/*"
         ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "workflow_aws_services" {
+  name = "workflow-aws-services-access"
+  role = aws_iam_role.workflow_execution_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "SSMParameterAccess"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter"
+        ]
+        Resource = "arn:aws:ssm:*:*:parameter/boundary/*"
+      },
+      {
+        Sid    = "IdentityStoreAccess"
+        Effect = "Allow"
+        Action = [
+          "identitystore:DescribeUser",
+          "identitystore:ListUsers"
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "OrganizationsAccess"
+        Effect = "Allow"
+        Action = [
+          "organizations:DescribeAccount",
+          "organizations:ListTagsForResource"
+        ]
+        Resource = "*"
       }
     ]
   })
