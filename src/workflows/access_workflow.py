@@ -190,7 +190,6 @@ class SlackWorkflow:
 
             # Evaluate policy for each group the user belongs to
             decision = None
-            authorizing_group = None
             
             for group_id in group_ids:
                 request = AccessRequest(
@@ -210,14 +209,13 @@ class SlackWorkflow:
                 
                 if temp_decision.effect == "ALLOW":
                     decision = temp_decision
-                    authorizing_group = group_id
                     logger.info(f"Access authorized by group: {group_id}")
                     break
             
             if not decision or decision.effect == "DENY":
                 self._send_slack_reply(
                     response_url,
-                    f"❌ *Access Denied*\n*Reason:* None of your groups are authorized for this request.",
+                    "❌ *Access Denied*\n*Reason:* None of your groups are authorized for this request.",
                     is_success=False
                 )
                 return
@@ -265,8 +263,8 @@ def lambda_handler(event, context):
     try:
         # Bootstrap configuration
         bot_token = get_bot_token()
-        identity_store_id = os.environ['IDENTITY_STORE_ID'] 
-        sso_instance_arn = os.environ['SSO_INSTANCE_ARN']
+        identity_store_id = os.environ['IDENTITY_STORE_ID']
+        _ = os.environ['SSO_INSTANCE_ARN']  # Validate presence at bootstrap
         config_path = os.environ.get('ACCESS_RULES_PATH', 'config/access_rules.yaml')
         
         # Instantiate adapters and engine
