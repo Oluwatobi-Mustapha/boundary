@@ -86,8 +86,9 @@ resource "aws_lambda_function" "slack_bot" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE = var.dynamodb_table_name
-      LOG_LEVEL      = "INFO"
+      DYNAMODB_TABLE     = var.dynamodb_table_name
+      WORKFLOW_QUEUE_URL = aws_sqs_queue.workflow_queue.url
+      LOG_LEVEL          = "INFO"
     }
   }
 }
