@@ -25,6 +25,9 @@ resource "aws_lambda_event_source_mapping" "sqs_trigger" {
   batch_size       = 1
 }
 
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
 resource "aws_iam_role" "workflow_execution_role" {
   name = "boundary-workflow-role-${var.environment}"
 
@@ -84,7 +87,7 @@ resource "aws_iam_role_policy" "workflow_aws_services" {
         Action = [
           "ssm:GetParameter"
         ]
-        Resource = "arn:aws:ssm:*:*:parameter/boundary/*"
+        Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/boundary/*"
       },
       {
         Sid    = "IdentityStoreAccess"

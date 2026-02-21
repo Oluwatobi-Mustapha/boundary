@@ -14,6 +14,7 @@ from src.adapters.identity_store_adapter import IdentityStoreAdapter, IdentitySt
 from src.adapters.aws_orgs import AWSOrganizationsAdapter, AWSResourceNotFoundError
 from src.core.engine import PolicyEngine
 from src.models.request import AccessRequest
+from src.validators import validate_duration, validate_account_id
 
 logger = logging.getLogger(__name__)
 
@@ -170,13 +171,11 @@ class SlackWorkflow:
             if len(parts) < 3:
                 raise WorkflowError("Usage: /boundary <AccountID> <PermissionSet> <Hours>")
             
-            account_id = parts[0]
+            account_id = validate_account_id(parts[0])
             permission_set = parts[1]
             
             try:
-                duration_hours = float(parts[2])
-                if duration_hours <= 0 or duration_hours > 24:
-                    raise ValueError("Duration must be between 1 and 24 hours.")
+                duration_hours = validate_duration(float(parts[2]))
             except ValueError as e:
                 raise WorkflowError(f"Invalid duration: {e}")
 
