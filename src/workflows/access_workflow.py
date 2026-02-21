@@ -206,7 +206,7 @@ class SlackWorkflow:
                 return
 
             # Populate rule_id for audit trail
-            request.rule_id = decision.rule_id
+            request.rule_id = decision.rule_id or ""
 
             # 4. Success Notification
             success_msg = (
