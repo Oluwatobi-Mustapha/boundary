@@ -252,6 +252,7 @@ def lambda_handler(event, context):
         # Bootstrap configuration
         bot_token = get_bot_token()
         identity_store_id = os.environ['IDENTITY_STORE_ID']
+        _ = os.environ['SSO_INSTANCE_ARN']  # Validate presence at bootstrap
         config_path = os.environ.get('ACCESS_RULES_PATH', 'config/access_rules.yaml')
         
         # Instantiate adapters and engine
