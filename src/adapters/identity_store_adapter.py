@@ -134,3 +134,63 @@ class IdentityStoreAdapter:
         # If we exit the loop, we exhausted all retries
         logger.error(f"Failed to fetch user ID after {max_retries} retries")
         raise IdentityStoreError("Identity Store query exceeded max retries")
+
+    def get_user_group_memberships(self, user_id: str, max_retries: int = 3) -> list[str]:
+        """
+        Fetches all group IDs that a user belongs to.
+        
+        Args:
+            user_id: AWS Identity Store User ID (UUID)
+            max_retries: Maximum retry attempts for throttling
+            
+        Returns:
+            List of group IDs (UUIDs) that the user is a member of
+            
+        Raises:
+            IdentityStoreError: If the query fails
+        """
+        group_ids = []
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                paginator = self.client.get_paginator('list_group_memberships_for_member')
+                page_iterator = paginator.paginate(
+                    IdentityStoreId=self.identity_store_id,
+                    MemberId={'UserId': user_id}
+                )
+                
+                for page in page_iterator:
+                    for membership in page.get('GroupMemberships', []):
+                        group_ids.append(membership['GroupId'])
+                
+                logger.debug(f"User belongs to {len(group_ids)} group(s)")
+                return group_ids
+                
+            except botocore.exceptions.ClientError as e:
+                error_code = e.response.get('Error', {}).get('Code', 'Unknown')
+                
+                if error_code == 'ThrottlingException':
+                    if attempt == max_retries:
+                        logger.error("Throttled on final attempt fetching group memberships")
+                        raise IdentityStoreError("AWS throttling exceeded max retries")
+                    
+                    backoff = 2 ** (attempt - 1)
+                    jitter = random.uniform(0, backoff * 0.5)
+                    sleep_time = backoff + jitter
+                    
+                    logger.warning(
+                        f"AWS throttling fetching groups. "
+                        f"Waiting {sleep_time:.2f} seconds... (Attempt {attempt}/{max_retries})"
+                    )
+                    time.sleep(sleep_time)
+                    continue
+                else:
+                    logger.error(f"AWS API error fetching groups: {error_code}")
+                    raise IdentityStoreError(f"Failed to fetch group memberships: {error_code}")
+            
+            except Exception as e:
+                logger.error(f"Unexpected error fetching group memberships: {type(e).__name__}")
+                raise IdentityStoreError(f"Failed to fetch group memberships: {type(e).__name__}")
+        
+        logger.error(f"Failed to fetch group memberships after {max_retries} retries")
+        raise IdentityStoreError("Group membership query exceeded max retries")

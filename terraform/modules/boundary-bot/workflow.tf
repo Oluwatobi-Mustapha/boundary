@@ -91,7 +91,8 @@ resource "aws_iam_role_policy" "workflow_aws_services" {
         Effect = "Allow"
         Action = [
           "identitystore:DescribeUser",
-          "identitystore:ListUsers"
+          "identitystore:ListUsers",
+          "identitystore:ListGroupMembershipsForMember"
         ]
         Resource = "*"
       },

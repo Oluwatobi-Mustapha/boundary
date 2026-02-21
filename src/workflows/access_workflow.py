@@ -163,8 +163,14 @@ class SlackWorkflow:
         try:
             # 1. Identity Translation
             email = self.slack.get_user_email(slack_user_id)
-            aws_principal_id = self.identity.get_user_id_by_email(email)
+            aws_user_id = self.identity.get_user_id_by_email(email)
             logger.debug("Identity mapped successfully")
+            
+            # 2. Fetch user's group memberships
+            group_ids = self.identity.get_user_group_memberships(aws_user_id)
+            if not group_ids:
+                raise WorkflowError("You are not a member of any authorized groups.")
+            logger.info(f"User belongs to {len(group_ids)} group(s)")
 
             # 2. Command Parsing
             parts = command_text.split()
@@ -182,25 +188,36 @@ class SlackWorkflow:
             logger.info(f"Fetching AWS Context for account {account_id}...")
             aws_context = self.orgs.build_account_context(account_id)
 
-            request = AccessRequest(
-                request_id=f"req-{uuid.uuid4().hex[:16]}",
-                principal_id=aws_principal_id,
-                principal_type="USER",
-                permission_set_arn=f"arn:aws:sso:::permissionSet/{permission_set}",
-                permission_set_name=permission_set,
-                account_id=account_id,
-                instance_arn=os.environ['SSO_INSTANCE_ARN'],
-                rule_id="",  # Will be populated by policy engine on ALLOW
-                requested_at=time.time(),
-                expires_at=time.time() + (duration_hours * 3600)
-            )
-
-            decision = self.engine.evaluate(request, aws_context)
+            # Evaluate policy for each group the user belongs to
+            decision = None
+            authorizing_group = None
             
-            if decision.effect == "DENY":
+            for group_id in group_ids:
+                request = AccessRequest(
+                    request_id=f"req-{uuid.uuid4().hex[:16]}",
+                    principal_id=group_id,
+                    principal_type="GROUP",
+                    permission_set_arn=f"arn:aws:sso:::permissionSet/{permission_set}",
+                    permission_set_name=permission_set,
+                    account_id=account_id,
+                    instance_arn=os.environ['SSO_INSTANCE_ARN'],
+                    rule_id="",  # Will be populated by policy engine on ALLOW
+                    requested_at=time.time(),
+                    expires_at=time.time() + (duration_hours * 3600)
+                )
+                
+                temp_decision = self.engine.evaluate(request, aws_context)
+                
+                if temp_decision.effect == "ALLOW":
+                    decision = temp_decision
+                    authorizing_group = group_id
+                    logger.info(f"Access authorized by group: {group_id}")
+                    break
+            
+            if not decision or decision.effect == "DENY":
                 self._send_slack_reply(
                     response_url,
-                    f"❌ *Access Denied*\n*Reason:* {decision.reason}",
+                    f"❌ *Access Denied*\n*Reason:* None of your groups are authorized for this request.",
                     is_success=False
                 )
                 return
