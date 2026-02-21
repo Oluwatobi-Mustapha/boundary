@@ -1,106 +1,148 @@
-import logging
-import boto3
+import json
 import os
-import time
-import hmac
-import hashlib
 import base64
 import urllib.parse
+import logging
+import boto3
+import hmac
+import hashlib
+import time
+import uuid
 
-# --- 1. GLOBAL SCOPE (Cold Start Initialization) ---
 logger = logging.getLogger()
 logger.setLevel(os.environ.get("LOG_LEVEL", "INFO").upper())
 
-# Initialize the AWS SDK clients outside the handler
-ssm_client = boto3.client('ssm')
-lambda_client = boto3.client('lambda')
+# --- 1. THE WARM START CACHE ---
+# Initialize the boto3 clients OUTSIDE the handler so they stay warm between invocations
+ssm = boto3.client('ssm')
+sqs = boto3.client('sqs')
 
-# This is our in-memory cache
-CACHED_SLACK_SECRET = None 
-# ---------------------------------------------------
+CACHED_SLACK_SECRET = None
+
+def get_slack_secret():
+    global CACHED_SLACK_SECRET
+    if CACHED_SLACK_SECRET:
+        return CACHED_SLACK_SECRET
+    
+    logger.info("Cold Start: Fetching Slack secret from SSM Parameter Store...")
+    try:
+        response = ssm.get_parameter(
+            Name='/boundary/slack/signing_secret',
+            WithDecryption=True
+        )
+        CACHED_SLACK_SECRET = response['Parameter']['Value']
+        return CACHED_SLACK_SECRET
+    except Exception as e:
+        logger.error(f"Failed to fetch secret: {e}")
+        raise
 
 def verify_slack_signature(headers: dict, body: str, secret: str) -> bool:
-    """
-    Cryptographically proves the request came from Slack and prevents replay attacks.
-    """
-    timestamp = headers.get('x-slack-request-timestamp')
-    slack_signature = headers.get('x-slack-signature')
+    slack_signature = headers.get('x-slack-signature', '')
+    slack_request_timestamp = headers.get('x-slack-request-timestamp', '0')
 
-    if not timestamp or not slack_signature:
+    # Validate timestamp is numeric before conversion
+    try:
+        timestamp_int = int(slack_request_timestamp)
+    except (ValueError, TypeError):
+        logger.error("Invalid timestamp format in Slack signature")
         return False
 
-    # 1. Defeat the Replay Attack (5-minute window)
-    if abs(time.time() - int(timestamp)) > 60 * 5:
-        logger.warning("Replay attack detected or extreme clock drift!")
+    if abs(time.time() - timestamp_int) > 60 * 5:
+        logger.error("Signature verification failed: Timestamp is older than 5 minutes. Possible replay attack!")
         return False
 
-    # 2. Reconstruct the base string Slack used to create the signature
-    sig_basestring = f"v0:{timestamp}:{body}"
-
-    # 3. Calculate our own HMAC-SHA256 signature
+    sig_basestring = f"v0:{slack_request_timestamp}:{body}"
     my_signature = 'v0=' + hmac.new(
         secret.encode('utf-8'),
         sig_basestring.encode('utf-8'),
         hashlib.sha256
     ).hexdigest()
 
-    # 4. Compare securely (hmac.compare_digest prevents timing attacks)
     return hmac.compare_digest(my_signature, slack_signature)
 
 def lambda_handler(event, context):
-    global CACHED_SLACK_SECRET
-    
-    logger.info("Slack Bot received an event!")
-    
-    # --- 2. WARM START CHECK ---
-    if CACHED_SLACK_SECRET is None:
-        logger.info("Cold Start: Fetching Slack Secret from AWS SSM...")
-        try:
-            # The Waiter uses their new IAM badge to open the SSM vault!
-            response = ssm_client.get_parameter(
-                Name='/boundary/slack/signing_secret', 
-                WithDecryption=True
-            )
-            CACHED_SLACK_SECRET = response['Parameter']['Value']
-        except Exception as e:
-            logger.error(f"Failed to fetch secret: {e}")
-            return {"statusCode": 500, "body": "Internal Server Error"}
-    else:
-        logger.info("Warm Start: Using cached Slack Secret.")
-        
-   # --- 3. DECODE THE PAYLOAD FIRST ---
+    try:
+        slack_secret = get_slack_secret()
+    except Exception:
+        return {"statusCode": 500, "body": "Configuration Error"}
+
+    # --- 2. DECODE THE PAYLOAD FIRST ---
     raw_body = event.get('body', '')
     
     if event.get('isBase64Encoded', False):
-        logger.info("Decoding Base64 payload from API Gateway...")
         decoded_body = base64.b64decode(raw_body).decode('utf-8')
     else:
         decoded_body = raw_body
 
-    # --- 4. THE SLACK MATH ---
+    # --- 3. THE SLACK MATH ---
     headers = {k.lower(): v for k, v in event.get('headers', {}).items()}
 
-    # Notice we are using decoded_body here now!
-    if not verify_slack_signature(headers, decoded_body, CACHED_SLACK_SECRET):
-        logger.error("🚨 Invalid Slack Signature! Dropping request.")
-        return {"statusCode": 401, "body": "Unauthorized"}
+    if not verify_slack_signature(headers, decoded_body, slack_secret):
+        logger.error("Invalid Slack Signature! Dropping request.")
+        return {
+            "statusCode": 401, 
+            "body": "Request verification failed. Please contact your administrator if this persists."
+        }
         
-    logger.info("✅ Slack Signature Verified!")
+    logger.info("Slack Signature Verified!")
     
-    # --- 5. PARSE THE 1990s STRING ---
+    # --- 4. PARSE THE 1990s STRING ---
     parsed_body = urllib.parse.parse_qs(decoded_body)
     
     user_id = parsed_body.get('user_id', [''])[0]
     command_text = parsed_body.get('text', [''])[0]
+    response_url = parsed_body.get('response_url', [''])[0]
     
-    logger.info(f"User {user_id} requested: {command_text}")
-
-    # --- 6. THE DECOUPLING STUB ---
-    policy_engine_arn = os.environ.get('POLICY_ENGINE_ARN')
-    
-    if not policy_engine_arn:
-        logger.warning("POLICY_ENGINE_ARN is missing, but returning 200 OK to satisfy Slack during testing.")
+    # --- 5. INPUT VALIDATION ---
+    if not user_id or not command_text or not response_url:
+        logger.error("Missing required fields in Slack payload")
         return {
-            "statusCode": 200,
-            "body": "Got it! 🚧 The Policy Engine is still under construction, but your Slack connection is perfect."
+            "statusCode": 400,
+            "body": "Invalid request format. Please check your command and try again."
         }
+    
+    # --- 6. THE METAL TICKET RAIL (SQS) ---
+    queue_url = os.environ.get('WORKFLOW_QUEUE_URL')
+    
+    if not queue_url:
+        logger.error("CRITICAL: WORKFLOW_QUEUE_URL environment variable is missing!")
+        return {
+            "statusCode": 500, 
+            "body": "System configuration error. Please contact your administrator."
+        }
+
+    # Generate unique request ID for tracing
+    request_id = str(uuid.uuid4())
+    
+    order_ticket = {
+        "request_id": request_id,
+        "user_id": user_id,
+        "command_text": command_text,
+        "response_url": response_url
+    }
+
+    try:
+        logger.info(f"Sending access request to workflow queue (request_id: {request_id})")
+        sqs.send_message(
+            QueueUrl=queue_url,
+            MessageBody=json.dumps(order_ticket),
+            MessageAttributes={
+                'user_id': {'StringValue': user_id, 'DataType': 'String'},
+                'request_type': {'StringValue': 'access_request', 'DataType': 'String'},
+                'request_id': {'StringValue': request_id, 'DataType': 'String'}
+            }
+        )
+    except Exception as e:
+        logger.error(f"Failed to write to SQS: {e}")
+        logger.debug(f"Failed message: {json.dumps(order_ticket)}")
+        return {
+            "statusCode": 500,
+            "body": "System temporarily unavailable. Please try again in a moment."
+        }
+        
+    # --- 7. THE 3-SECOND RULE ---
+    # We successfully put the ticket on the rail. Instantly return 200 OK!
+    return {
+        "statusCode": 200,
+        "body": "Access request received. Your request is being processed and you will be notified shortly."
+    }
