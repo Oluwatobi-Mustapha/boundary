@@ -205,6 +205,9 @@ class SlackWorkflow:
                 )
                 return
 
+            # Populate rule_id for audit trail
+            request.rule_id = decision.rule_id
+
             # 4. Success Notification
             success_msg = (
                 f"✅ *Access Granted!*\n"
