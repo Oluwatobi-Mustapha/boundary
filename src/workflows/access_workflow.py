@@ -4,29 +4,61 @@ import json
 import logging
 import random
 import time
+import os
+import uuid
+import boto3
 from typing import Dict, Any
 
 from src.adapters.slack_adapter import SlackAdapter, SlackAPIError
 from src.adapters.identity_store_adapter import IdentityStoreAdapter, IdentityStoreError
-from src.validators import validate_duration
+from src.adapters.aws_orgs import AWSOrganizationsAdapter, AWSResourceNotFoundError
+from src.core.engine import PolicyEngine
+from src.models.request import AccessRequest
+from src.validators import validate_duration, validate_account_id
 
 logger = logging.getLogger(__name__)
+
+# Warm start cache for SSM parameter
+ssm = boto3.client('ssm')
+CACHED_BOT_TOKEN = None
+
+def get_bot_token():
+    global CACHED_BOT_TOKEN
+    if CACHED_BOT_TOKEN:
+        return CACHED_BOT_TOKEN
+    
+    logger.info("Cold Start: Fetching Slack bot token from SSM Parameter Store...")
+    try:
+        response = ssm.get_parameter(
+            Name='/boundary/slack/bot_token',
+            WithDecryption=True
+        )
+        CACHED_BOT_TOKEN = response['Parameter']['Value']
+        return CACHED_BOT_TOKEN
+    except Exception as e:
+        logger.error(f"Failed to fetch bot token: {e}")
+        raise
 
 class WorkflowError(Exception):
     """Base exception for workflow errors."""
     pass
 
 class SlackWorkflow:
-    def __init__(self, slack_adapter: SlackAdapter, identity_adapter: IdentityStoreAdapter):
+    def __init__(self, slack_adapter: SlackAdapter, identity_adapter: IdentityStoreAdapter, 
+                 engine: PolicyEngine, orgs_adapter: AWSOrganizationsAdapter):
         """
         Orchestrates Slack-to-AWS identity mapping and access provisioning.
         
         Args:
             slack_adapter: Adapter for Slack API operations
             identity_adapter: Adapter for AWS Identity Store operations
+            engine: Policy evaluation engine
+            orgs_adapter: AWS Organizations adapter for account context
         """
         self.slack = slack_adapter
         self.identity = identity_adapter
+        self.engine = engine
+        self.orgs = orgs_adapter
 
     def _validate_response_url(self, url: str) -> None:
         """
@@ -105,7 +137,7 @@ class SlackWorkflow:
         Expected event payload:
         {
             "user_id": "U1234",
-            "command_text": "AdministratorAccess 2",
+            "command_text": "<AccountID> <PermissionSet> <Hours>",
             "response_url": "https://hooks.slack.com/..."
         }
         
@@ -116,12 +148,10 @@ class SlackWorkflow:
         command_text = event.get('command_text', '')
         response_url = event.get('response_url')
 
-        # Validate required fields
         if not slack_user_id or not response_url:
             logger.error("Missing required fields in event payload")
             return
         
-        # Validate response_url BEFORE try block to avoid unhandled exceptions in error handlers
         try:
             self._validate_response_url(response_url)
         except WorkflowError as e:
@@ -131,76 +161,123 @@ class SlackWorkflow:
         logger.info("Starting access request workflow")
 
         try:
-            # 1. Identity Translation Chain
+            # 1. Identity Translation
             email = self.slack.get_user_email(slack_user_id)
-            _ = self.identity.get_user_id_by_email(email)  # Validate identity exists
-            
-            # Log at DEBUG level to avoid PII exposure
+            aws_principal_id = self.identity.get_user_id_by_email(email)
             logger.debug("Identity mapped successfully")
 
             # 2. Command Parsing
             parts = command_text.split()
-            if len(parts) < 2:
-                raise WorkflowError("Usage: /boundary <PermissionSet> <Hours>")
+            if len(parts) < 3:
+                raise WorkflowError("Usage: /boundary <AccountID> <PermissionSet> <Hours>")
             
-            permission_set = parts[0]
-            
-            # Validate duration using validators module
             try:
-                duration_hours = float(parts[1])
-                validate_duration(duration_hours)
+                account_id = validate_account_id(parts[0])
+                permission_set = parts[1]
+                duration_hours = validate_duration(float(parts[2]))
             except ValueError as e:
-                raise WorkflowError(f"Invalid duration: {e}")
+                raise WorkflowError(f"Invalid input: {e}")
 
-            # 3. Policy Evaluation (STUB - to be implemented)
-            # from src.workflow import AccessWorkflow
-            # from src.models.request import AccessRequest
-            # request = AccessRequest(principal_id=aws_principal_id, ...)
-            # result = policy_workflow.handle_request(request)
+            # 3. Policy Evaluation
+            logger.info(f"Fetching AWS Context for account {account_id}...")
+            aws_context = self.orgs.build_account_context(account_id)
+
+            request = AccessRequest(
+                request_id=f"req-{uuid.uuid4().hex[:16]}",
+                principal_id=aws_principal_id,
+                principal_type="USER",
+                permission_set_arn=f"arn:aws:sso:::permissionSet/{permission_set}",
+                permission_set_name=permission_set,
+                account_id=account_id,
+                instance_arn=os.environ['SSO_INSTANCE_ARN'],
+                rule_id="",  # Will be populated by policy engine on ALLOW
+                requested_at=time.time(),
+                expires_at=time.time() + (duration_hours * 3600)
+            )
+
+            decision = self.engine.evaluate(request, aws_context)
             
-            decision_is_allow = True
-            decision_reason = "Policy evaluation passed"
-            
-            if not decision_is_allow:
+            if decision.effect == "DENY":
                 self._send_slack_reply(
                     response_url,
-                    f"❌ Access Denied: {decision_reason}",
+                    f"❌ *Access Denied*\n*Reason:* {decision.reason}",
                     is_success=False
                 )
                 return
 
-            # 4. Provisioning (STUB - to be implemented)
-            # sso_adapter.create_account_assignment(...)
-            # dynamodb_adapter.save_active_request(...)
+            # Populate rule_id for audit trail
+            request.rule_id = decision.rule_id or ""
 
-            # 5. Success Notification
+            # 4. Success Notification
             success_msg = (
-                f"✅ Access Granted!\n"
-                f"*Role:* {permission_set}\n"
-                f"*Duration:* {duration_hours} hours\n"
-                f"*Status:* Provisioning..."
+                f"✅ *Access Granted!*\n"
+                f"*Account:* `{account_id}`\n"
+                f"*Role:* `{permission_set}`\n"
+                f"*Duration:* `{decision.effective_duration_hours} hours`\n"
+                f"*Status:* Provisioning... (WIP)"
             )
             self._send_slack_reply(response_url, success_msg, is_success=True)
 
-        except (SlackAPIError, IdentityStoreError, WorkflowError) as e:
-            # Expected errors - log type but don't expose details to user
+        except (SlackAPIError, IdentityStoreError, WorkflowError, AWSResourceNotFoundError) as e:
             logger.warning(f"Workflow error: {type(e).__name__}")
-            
-            # Map exceptions to user-friendly messages (no PII)
             if isinstance(e, SlackAPIError):
-                user_msg = "Unable to retrieve your Slack profile. Please try again."
+                user_msg = "Unable to retrieve your Slack profile."
             elif isinstance(e, IdentityStoreError):
-                user_msg = "Unable to map your identity to AWS. Please contact your administrator."
-            else:  # WorkflowError - messages are safe (no PII)
+                user_msg = "Unable to map your identity to AWS."
+            elif isinstance(e, AWSResourceNotFoundError):
+                user_msg = f"AWS Account '{account_id}' could not be found or analyzed."
+            else: 
                 user_msg = str(e)
             
             self._send_slack_reply(response_url, f"⚠️ {user_msg}", is_success=False)
             
         except Exception as e:
-            # Unexpected errors - log with full context but don't expose details
             logger.error(f"Unexpected workflow error: {type(e).__name__}", exc_info=True)
             self._send_slack_reply(
                 response_url,
                 "⚠️ An unexpected error occurred. Please contact support.",
                 is_success=False
             )
+
+
+def lambda_handler(event, context):
+    """
+    Lambda entry point for workflow processing.
+    
+    Args:
+        event: SQS event containing access request tickets
+        context: Lambda context object
+    """
+    try:
+        # Bootstrap configuration
+        bot_token = get_bot_token()
+        identity_store_id = os.environ['IDENTITY_STORE_ID']
+        _ = os.environ['SSO_INSTANCE_ARN']  # Validate presence at bootstrap
+        config_path = os.environ.get('ACCESS_RULES_PATH', 'config/access_rules.yaml')
+        
+        # Instantiate adapters and engine
+        slack_adapter = SlackAdapter(bot_token)
+        identity_adapter = IdentityStoreAdapter(identity_store_id)
+        engine = PolicyEngine(config_path)
+        orgs_adapter = AWSOrganizationsAdapter()
+        
+        workflow = SlackWorkflow(slack_adapter, identity_adapter, engine, orgs_adapter)
+
+    except KeyError as e:
+        logger.error(f"CRITICAL: Missing required environment variable: {e}")
+        raise
+    except Exception as e:
+        logger.error(f"CRITICAL: Failed to bootstrap the workflow environment: {e}")
+        raise
+
+    for record in event.get('Records', []):
+        try:
+            raw_body = record.get('body', '{}')
+            ticket = json.loads(raw_body)
+            logger.info(f"Processing ticket from SQS: {record.get('messageId')}")
+            workflow.process_request(ticket)
+        except json.JSONDecodeError:
+            logger.error("Failed to parse SQS message body as JSON. Discarding message.")
+        except Exception as e:
+            logger.error(f"Unexpected error processing record: {e}")
+            raise
