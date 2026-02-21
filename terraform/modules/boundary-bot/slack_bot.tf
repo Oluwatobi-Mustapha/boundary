@@ -47,6 +47,30 @@ resource "aws_iam_role_policy" "slack_bot_ssm" {
 }
 
 # ------------------------------------------------------------------------------
+# 1.6 SLACK BOT SQS POLICY (Queue Access)
+# ------------------------------------------------------------------------------
+resource "aws_iam_policy" "slack_bot_sqs_policy" {
+  name        = "boundary-slack-bot-sqs-${var.environment}"
+  description = "Allows the Slack Bot to send messages to the workflow queue"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["sqs:SendMessage"]
+        Resource = aws_sqs_queue.workflow_queue.arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "slack_bot_sqs_attach" {
+  role       = aws_iam_role.slack_bot_execution.name
+  policy_arn = aws_iam_policy.slack_bot_sqs_policy.arn
+}
+
+# ------------------------------------------------------------------------------
 # 2. SLACK BOT LAMBDA FUNCTION
 # ------------------------------------------------------------------------------
 resource "aws_lambda_function" "slack_bot" {
@@ -115,4 +139,9 @@ resource "aws_lambda_permission" "api_gw_invoke" {
 output "slack_webhook_url" {
   value       = "${aws_apigatewayv2_api.slack_api.api_endpoint}/webhook"
   description = "The public URL to paste into the Slack API portal"
+}
+
+output "workflow_queue_url" {
+  value       = aws_sqs_queue.workflow_queue.url
+  description = "SQS queue URL for workflow processing"
 }
