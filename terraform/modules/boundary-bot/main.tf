@@ -1,5 +1,5 @@
 # ------------------------------------------------------------------------------
-# 0. INSTALL PYTHON DEPENDENCIES
+# 0. BUILD LAMBDA PACKAGE
 # ------------------------------------------------------------------------------
 resource "null_resource" "install_dependencies" {
   triggers = {
@@ -9,18 +9,21 @@ resource "null_resource" "install_dependencies" {
 
   provisioner "local-exec" {
     command = <<EOT
-      pip3 install -r ${path.module}/../../../requirements.txt -t ${path.module}/../../../src/
-      cp ${path.module}/../../../config/access_rules.yaml ${path.module}/../../../src/
+      rm -rf ${path.module}/build/package
+      mkdir -p ${path.module}/build/package
+      cp -r ${path.module}/../../../src/* ${path.module}/build/package/
+      pip3 install -r ${path.module}/../../../requirements.txt -t ${path.module}/build/package/
+      cp ${path.module}/../../../config/access_rules.yaml ${path.module}/build/package/
     EOT
   }
 }
 
 # ------------------------------------------------------------------------------
-# 1. CODE PACKAGING (Zipping the src folder directly)
+# 1. CODE PACKAGING
 # ------------------------------------------------------------------------------
 data "archive_file" "lambda_package" {
   type        = "zip"
-  source_dir  = "${path.module}/../../../src"
+  source_dir  = "${path.module}/build/package"
   output_path = "${path.module}/build/boundary_bot.zip"
 
   depends_on = [null_resource.install_dependencies]
