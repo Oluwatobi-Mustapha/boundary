@@ -5,6 +5,7 @@ resource "null_resource" "install_dependencies" {
   triggers = {
     requirements = filemd5("${path.module}/../../../requirements.txt")
     config_file  = filemd5("${path.module}/../../../config/access_rules.yaml")
+    src_code     = sha1(join("", [for f in fileset("${path.module}/../../../src", "**") : filemd5("${path.module}/../../../src/${f}")]))
   }
 
   provisioner "local-exec" {
