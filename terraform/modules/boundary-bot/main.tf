@@ -1,11 +1,33 @@
 # ------------------------------------------------------------------------------
+# 0. BUILD LAMBDA PACKAGE
+# ------------------------------------------------------------------------------
+resource "null_resource" "install_dependencies" {
+  triggers = {
+    requirements = filemd5("${path.module}/../../../requirements.txt")
+    config_file  = filemd5("${path.module}/../../../config/access_rules.yaml")
+    src_code     = sha1(join("", [for f in fileset("${path.module}/../../../src", "**") : filemd5("${path.module}/../../../src/${f}")]))
+  }
+
+  provisioner "local-exec" {
+    command = <<EOT
+      rm -rf ${path.module}/build/package
+      mkdir -p ${path.module}/build/package
+      cp -r ${path.module}/../../../src/* ${path.module}/build/package/
+      pip3 install -r ${path.module}/../../../requirements.txt -t ${path.module}/build/package/
+      cp ${path.module}/../../../config/access_rules.yaml ${path.module}/build/package/
+    EOT
+  }
+}
+
+# ------------------------------------------------------------------------------
 # 1. CODE PACKAGING
 # ------------------------------------------------------------------------------
 data "archive_file" "lambda_package" {
-  type = "zip"
-  # We only zip the source code, nothing else.
-  source_dir  = "${path.module}/../../../src"
+  type        = "zip"
+  source_dir  = "${path.module}/build/package"
   output_path = "${path.module}/build/boundary_bot.zip"
+
+  depends_on = [null_resource.install_dependencies]
 }
 
 # ------------------------------------------------------------------------------
@@ -14,14 +36,11 @@ data "archive_file" "lambda_package" {
 resource "aws_lambda_function" "janitor" {
   function_name = "${var.project_name}-${var.environment}-janitor"
   role          = aws_iam_role.janitor_execution.arn
-  # CRITICAL FIX: Because we zipped 'src' directly, the handler is just the filename.function
-  handler     = "janitor.lambda_handler"
-  runtime     = "python3.11"
-  timeout     = 60
-  memory_size = 128
-
-  # Publish a new version on every code change
-  publish = true
+  handler       = "janitor.lambda_handler"
+  runtime       = "python3.11"
+  timeout       = 60
+  memory_size   = 128
+  publish       = true
 
   filename         = data.archive_file.lambda_package.output_path
   source_code_hash = data.archive_file.lambda_package.output_base64sha256
@@ -35,14 +54,10 @@ resource "aws_lambda_function" "janitor" {
       var.extra_env_vars
     )
   }
-
-  tags = {
-    Name = "Boundary Janitor"
-  }
 }
 
 # ------------------------------------------------------------------------------
-# 2b. LAMBDA ALIAS (The Stable Pointer)
+# 2b. LAMBDA ALIAS
 # ------------------------------------------------------------------------------
 resource "aws_lambda_alias" "janitor_prod" {
   name             = "prod"
