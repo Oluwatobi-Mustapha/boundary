@@ -2,17 +2,29 @@ import sys
 import os
 import argparse
 import logging
+import json
+import time
+import urllib.request
+import urllib.error
+
+import boto3
 
 # --- PATH FIX ---
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # ----------------
 
-from src.adapters.aws_orgs import AWSOrganizationsAdapter
-from src.adapters.state_store import StateStore
+from adapters.aws_orgs import AWSOrganizationsAdapter
+from adapters.state_store import StateStore
+from models.request_states import STATE_REVOKED
 
 # --- LOGGING CONFIGURATION ---
 # We configure this globally so it applies to both CLI and Lambda contexts. 
 logger = logging.getLogger()
+
+ssm = boto3.client("ssm")
+SLACK_API_BASE = "https://slack.com/api"
+DEFAULT_SLACK_TOKEN_PARAM = "/boundary/slack/bot_token"
+_cached_bot_token = None
 
 # 1. FORCE the log level to INFO. 
 #    AWS Lambda defaults to WARNING, which swallows our heartbeat logs.
@@ -28,6 +40,87 @@ if not logger.handlers:
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 # -----------------------------
+
+def get_bot_token() -> str:
+    """
+    Fetches Slack bot token from SSM and caches it for warm starts.
+    """
+    global _cached_bot_token
+    if _cached_bot_token:
+        return _cached_bot_token
+
+    parameter_name = os.environ.get("SLACK_BOT_TOKEN_PARAM", DEFAULT_SLACK_TOKEN_PARAM)
+    response = ssm.get_parameter(Name=parameter_name, WithDecryption=True)
+    _cached_bot_token = response["Parameter"]["Value"]
+    return _cached_bot_token
+
+def _is_valid_slack_user_id(slack_user_id: str) -> bool:
+    return (
+        isinstance(slack_user_id, str)
+        and len(slack_user_id) >= 9
+        and slack_user_id[0] in {"U", "W"}
+    )
+
+def _slack_api_post(method: str, token: str, payload: dict) -> dict:
+    """
+    Calls a Slack Web API method and returns the decoded body.
+    """
+    req = urllib.request.Request(
+        f"{SLACK_API_BASE}/{method}",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json; charset=utf-8"
+        },
+        method="POST"
+    )
+
+    with urllib.request.urlopen(req, timeout=10) as response:  # nosec B310
+        body = json.loads(response.read().decode("utf-8"))
+        if not body.get("ok"):
+            raise Exception(f"{method} failed: {body.get('error', 'unknown_error')}")
+        return body
+
+def _resolve_dm_channel(token: str, slack_user_id: str) -> str:
+    """
+    Opens (or fetches) the bot-user DM channel.
+    Falls back to user ID (App Home target) if DM open fails.
+    """
+    try:
+        body = _slack_api_post("conversations.open", token, {"users": slack_user_id})
+        channel_id = body.get("channel", {}).get("id")
+        if channel_id:
+            return channel_id
+    except Exception as e:
+        logger.warning(f"Failed to open DM channel for {slack_user_id}, falling back to App Home: {e}")
+
+    return slack_user_id
+
+def notify_revocation(slack_user_id: str, item: dict) -> None:
+    """
+    Sends a calm DM to the requester after successful revocation.
+    """
+    if not _is_valid_slack_user_id(slack_user_id):
+        raise ValueError(f"Invalid Slack user ID format: {slack_user_id}")
+
+    token = get_bot_token()
+    channel = _resolve_dm_channel(token, slack_user_id)
+    permission_set_name = item.get("permission_set_name", "requested")
+    account_id = item.get("account_id", "unknown")
+    request_id = item.get("request_id", "unknown")
+
+    message = (
+        "Access update: your temporary AWS access has now ended and was revoked.\n"
+        f"Account: {account_id}\n"
+        f"Role: {permission_set_name}\n"
+        f"Request: {request_id}\n"
+        "Revocation blocks new sessions now. If you already had an active session, "
+        "it may remain usable until its normal session expiry."
+    )
+
+    _slack_api_post("chat.postMessage", token, {"channel": channel, "text": message})
+
+    logger.info(f"Slack revocation notification sent to {slack_user_id} for {request_id}")
 
 def run_revocation_loop(table_name: str, dry_run: bool = False):
     """
@@ -74,13 +167,33 @@ def run_revocation_loop(table_name: str, dry_run: bool = False):
                 principal_id=principal,
                 account_id=account,
                 permission_set_arn=item['permission_set_arn'],
-                instance_arn=item['instance_arn']
+                instance_arn=item['instance_arn'],
+                principal_type=item.get('principal_type', 'USER')
             )
 
             # B. Update DB Status
-            state_store.update_status(req_id, "REVOKED")
+            state_store.update_status(
+                req_id,
+                STATE_REVOKED,
+                extra_updates={
+                    "revoked_at": time.time(),
+                    "reason": "Expired temporary access revoked by janitor."
+                }
+            )
             logger.info(f"✅ Successfully revoked {req_id}")
             revocation_count += 1
+
+            # C. Notify requester in Slack (best-effort only)
+            slack_user_id = item.get("slack_user_id")
+            if slack_user_id:
+                try:
+                    notify_revocation(slack_user_id, item)
+                except Exception as notify_err:
+                    logger.warning(
+                        f"Revoked {req_id}, but failed to send Slack revocation notification: {notify_err}"
+                    )
+            else:
+                logger.info(f"Revoked {req_id}, but no slack_user_id was stored on the request item.")
 
         except Exception as e:
             logger.error(f"❌ Failed to revoke {req_id}: {e}")

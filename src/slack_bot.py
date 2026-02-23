@@ -60,6 +60,77 @@ def verify_slack_signature(headers: dict, body: str, secret: str) -> bool:
 
     return hmac.compare_digest(my_signature, slack_signature)
 
+def _enqueue_ticket(queue_url: str, ticket: dict, message_attributes: dict) -> None:
+    sqs.send_message(
+        QueueUrl=queue_url,
+        MessageBody=json.dumps(ticket),
+        MessageAttributes=message_attributes
+    )
+
+def _handle_interactive_payload(parsed_body: dict, queue_url: str):
+    payload_raw = parsed_body.get('payload', [''])[0]
+    if not payload_raw:
+        return {"statusCode": 400, "body": "Missing interactive payload"}
+
+    try:
+        payload = json.loads(payload_raw)
+    except json.JSONDecodeError:
+        logger.error("Invalid interactive payload JSON")
+        return {"statusCode": 400, "body": "Invalid interactive payload"}
+
+    if payload.get("type") != "block_actions":
+        return {"statusCode": 200, "body": json.dumps({"text": "Interaction ignored."})}
+
+    action = (payload.get("actions") or [{}])[0]
+    action_id = action.get("action_id")
+    request_id = action.get("value", "")
+    approver_slack_user_id = payload.get("user", {}).get("id", "")
+
+    if action_id == "boundary_approve":
+        decision = "approve"
+    elif action_id == "boundary_deny":
+        decision = "deny"
+    else:
+        logger.warning(f"Unknown interactive action_id: {action_id}")
+        return {"statusCode": 200, "body": json.dumps({"text": "Unknown action ignored."})}
+
+    if not request_id or not approver_slack_user_id:
+        logger.error("Missing request_id or approver id in interactive payload")
+        return {"statusCode": 400, "body": "Invalid approval action payload"}
+
+    ticket = {
+        "request_type": "approval_action",
+        "request_id": request_id,
+        "action": decision,
+        "approver_slack_user_id": approver_slack_user_id,
+        "approval_channel_id": payload.get("channel", {}).get("id", "")
+    }
+
+    try:
+        logger.info(f"Queueing approval action for request_id={request_id}, action={decision}")
+        _enqueue_ticket(
+            queue_url,
+            ticket,
+            {
+                'request_type': {'StringValue': 'approval_action', 'DataType': 'String'},
+                'request_id': {'StringValue': request_id, 'DataType': 'String'}
+            }
+        )
+    except Exception as e:
+        logger.error(f"Failed to queue approval action: {e}")
+        return {"statusCode": 500, "body": "System temporarily unavailable. Please try again."}
+
+    # Keep this response fast for Slack's 3-second expectation.
+    return {
+        "statusCode": 200,
+        "headers": {"Content-Type": "application/json"},
+        "body": json.dumps({
+            "response_type": "ephemeral",
+            "replace_original": False,
+            "text": "Decision received. Processing..."
+        })
+    }
+
 def lambda_handler(event, context):
     try:
         slack_secret = get_slack_secret()
@@ -88,22 +159,10 @@ def lambda_handler(event, context):
     
     # --- 4. PARSE THE 1990s STRING ---
     parsed_body = urllib.parse.parse_qs(decoded_body)
-    
-    user_id = parsed_body.get('user_id', [''])[0]
-    command_text = parsed_body.get('text', [''])[0]
-    response_url = parsed_body.get('response_url', [''])[0]
-    
-    # --- 5. INPUT VALIDATION ---
-    if not user_id or not command_text or not response_url:
-        logger.error("Missing required fields in Slack payload")
-        return {
-            "statusCode": 400,
-            "body": "Invalid request format. Please check your command and try again."
-        }
-    
-    # --- 6. THE METAL TICKET RAIL (SQS) ---
+
+    # --- 5. THE METAL TICKET RAIL (SQS) ---
     queue_url = os.environ.get('WORKFLOW_QUEUE_URL')
-    
+
     if not queue_url:
         logger.error("CRITICAL: WORKFLOW_QUEUE_URL environment variable is missing!")
         return {
@@ -111,10 +170,27 @@ def lambda_handler(event, context):
             "body": "System configuration error. Please contact your administrator."
         }
 
-    # Generate unique request ID for tracing
+    # Interactive button payloads are sent as payload=<json>.
+    if 'payload' in parsed_body:
+        return _handle_interactive_payload(parsed_body, queue_url)
+
+    user_id = parsed_body.get('user_id', [''])[0]
+    command_text = parsed_body.get('text', [''])[0]
+    response_url = parsed_body.get('response_url', [''])[0]
+
+    # --- 6. INPUT VALIDATION ---
+    if not user_id or not command_text or not response_url:
+        logger.error("Missing required fields in slash command payload")
+        return {
+            "statusCode": 400,
+            "body": "Invalid request format. Please check your command and try again."
+        }
+
+    # Generate unique request ID for tracing slash command requests
     request_id = str(uuid.uuid4())
-    
+
     order_ticket = {
+        "request_type": "access_request",
         "request_id": request_id,
         "user_id": user_id,
         "command_text": command_text,
@@ -123,10 +199,10 @@ def lambda_handler(event, context):
 
     try:
         logger.info(f"Sending access request to workflow queue (request_id: {request_id})")
-        sqs.send_message(
-            QueueUrl=queue_url,
-            MessageBody=json.dumps(order_ticket),
-            MessageAttributes={
+        _enqueue_ticket(
+            queue_url,
+            order_ticket,
+            {
                 'user_id': {'StringValue': user_id, 'DataType': 'String'},
                 'request_type': {'StringValue': 'access_request', 'DataType': 'String'},
                 'request_id': {'StringValue': request_id, 'DataType': 'String'}

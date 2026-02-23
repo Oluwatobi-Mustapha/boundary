@@ -2,8 +2,8 @@ import json
 import os
 import datetime
 from dataclasses import asdict
-from src.models.request import AccessRequest
-from src.core.engine import EvaluationResult
+from models.request import AccessRequest
+from core.engine import EvaluationResult
 
 def to_serializable_dict(obj) -> dict:
     """
