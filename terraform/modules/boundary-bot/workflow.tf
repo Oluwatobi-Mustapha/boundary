@@ -17,7 +17,8 @@ resource "aws_lambda_function" "workflow_manager" {
         IDENTITY_STORE_ID = var.identity_store_id
         SSO_INSTANCE_ARN  = var.sso_instance_arn
       },
-      var.extra_env_vars
+      var.extra_env_vars,
+      { for name, arn in var.permission_set_arns : "PERMISSION_SET_${name}" => arn }
     )
   }
 }

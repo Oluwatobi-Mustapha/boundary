@@ -40,3 +40,9 @@ variable "extra_env_vars" {
   type        = map(string)
   default     = {}
 }
+
+variable "permission_set_arns" {
+  description = "Map of Permission Set names to their ARNs. Keys are prefixed with PERMISSION_SET_ in the Lambda environment to namespace them safely."
+  type        = map(string)
+  default     = {}
+}

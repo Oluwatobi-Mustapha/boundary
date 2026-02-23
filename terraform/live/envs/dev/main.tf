@@ -39,6 +39,9 @@ module "boundary_bot" {
   # Pass the secrets from tfvars down to the Lambda
   extra_env_vars = var.boundary_secrets
 
+  # Permission Set name -> ARN mapping (prefixed with PERMISSION_SET_ in Lambda env)
+  permission_set_arns = module.boundary_identity.permission_set_arns
+
   # Schedule
   schedule_expression = "rate(1 minute)"
 }

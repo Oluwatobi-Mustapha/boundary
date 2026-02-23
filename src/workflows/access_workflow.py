@@ -336,11 +336,14 @@ class SlackWorkflow:
                 if len(ticket_id) > 128:
                     raise WorkflowError("Ticket ID is too long (max 128 characters).")
 
-            permission_set_arn = os.environ.get(permission_set)
+            # Use a dedicated prefix to prevent user-controlled input from reading
+            # arbitrary environment variables (e.g. AWS_SECRET_ACCESS_KEY).
+            env_key = f"PERMISSION_SET_{permission_set}"
+            permission_set_arn = os.environ.get(env_key)
             if not permission_set_arn:
                 raise WorkflowError(
                     f"Configuration Error: Could not find the true AWS ARN for '{permission_set}'. "
-                    "Check your Terraform extra_env_vars!"
+                    f"Expected env var '{env_key}'. Check your Terraform extra_env_vars!"
                 )
 
             # 3. Policy Evaluation
