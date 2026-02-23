@@ -140,7 +140,7 @@ class AWSOrganizationsAdapter:
                 return
             raise Exception(f"Failed to provision access in AWS: {e}")
 
-    def remove_user_from_account(self, principal_id: str, account_id: str, permission_set_arn: str, instance_arn: str, principal_type: str = 'GROUP'):
+    def remove_user_from_account(self, principal_id: str, account_id: str, permission_set_arn: str, instance_arn: str, principal_type: str = 'USER'):
         """
         REVOCATION: Calls AWS to remove the access.
         """
