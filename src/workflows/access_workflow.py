@@ -157,6 +157,8 @@ class SlackWorkflow:
         except urllib.error.HTTPError as e:
             error_body = e.read().decode("utf-8", errors="ignore")
             raise WorkflowError(f"Slack API HTTP error {e.code}: {error_body}") from e
+        except urllib.error.URLError as e:
+            raise WorkflowError(f"Slack API network error: {e}") from e
 
     def _resolve_dm_channel(self, slack_user_id: str) -> str:
         try:
