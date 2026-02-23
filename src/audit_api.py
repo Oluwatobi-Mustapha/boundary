@@ -2,6 +2,7 @@ import base64
 import csv
 import io
 import json
+import logging
 import os
 import re
 import time
@@ -20,6 +21,8 @@ from models.request_states import (
     canonicalize_status,
     is_valid_status,
 )
+
+logger = logging.getLogger(__name__)
 
 
 ALL_STATUSES = [
@@ -634,5 +637,6 @@ def lambda_handler(event, context):  # pragma: no cover - entrypoint
         return _response(403, {"error": str(exc)})
     except ValueError as exc:
         return _response(400, {"error": str(exc)})
-    except Exception as exc:  # pragma: no cover - defensive
-        return _response(500, {"error": f"Internal error: {exc}"})
+    except Exception:  # pragma: no cover - defensive
+        logger.exception("Unhandled error in lambda_handler")
+        return _response(500, {"error": "Internal server error"})
