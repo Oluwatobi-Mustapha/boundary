@@ -65,6 +65,14 @@ resource "aws_iam_role_policy" "janitor_logic" {
           "organizations:ListTagsForResource"
         ]
         Resource = "*" # Organizations calls are global/root scoped
+      },
+      {
+        Sid    = "SSMAccess"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter"
+        ]
+        Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/boundary/slack/*"
       }
     ]
   })
