@@ -7,7 +7,7 @@ import time
 import os
 import uuid
 import boto3
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from adapters.slack_adapter import SlackAdapter, SlackAPIError
 from adapters.identity_store_adapter import IdentityStoreAdapter, IdentityStoreError
@@ -79,7 +79,7 @@ class SlackWorkflow:
         self._validate_response_url(response_url)
         
         color = "#2EB67D" if is_success else "#E01E5A"
-        payload = {
+        payload: Dict[str, Any] = {
             "response_type": "ephemeral",
             "attachments": [
                 {
