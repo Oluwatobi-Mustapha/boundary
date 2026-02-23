@@ -1,7 +1,7 @@
 import boto3
 import time
 from decimal import Decimal
-from typing import Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 from botocore.exceptions import ClientError
 from models.request import AccessRequest
 from models.request_states import (
@@ -164,28 +164,14 @@ class StateStore:
         Updates the status of a request (e.g., PENDING -> ACTIVE -> REVOKED).
         Optionally sets additional attributes provided via *extra_updates*.
         """
-        expr_parts = ["#s = :status"]
-        attr_names: Dict[str, str] = {"#s": "status"}
-        attr_values: Dict[str, Union[str, float, int, Decimal]] = {":status": new_status}
+        canonical_new_status = canonicalize_status(new_status)
+        if not is_valid_status(canonical_new_status):
+            raise ValueError(f"Invalid status: {new_status}")
 
-        if extra_updates:
-            for idx, (key, value) in enumerate(extra_updates.items()):
-                placeholder_name = f"#eu{idx}"
-                placeholder_value = f":eu{idx}"
-                expr_parts.append(f"{placeholder_name} = {placeholder_value}")
-                attr_names[placeholder_name] = key
-                if isinstance(value, float):
-                    attr_values[placeholder_value] = self._float_to_decimal(value)
-                else:
-                    attr_values[placeholder_value] = value
-
-        try:
-            self.table.update_item(
-                Key={"request_id": request_id},
-                UpdateExpression="SET " + ", ".join(expr_parts),
-                ExpressionAttributeNames=attr_names,
-                ExpressionAttributeValues=attr_values,
-            )
+        # Fetch current item for optimistic locking
+        item = self.get_request(request_id)
+        if not item:
+            raise ValueError(f"Request {request_id} not found")
 
         expression_names: Dict[str, str] = {"#s": "status", "#u": "updated_at"}
         expression_values: Dict[str, Any] = {
