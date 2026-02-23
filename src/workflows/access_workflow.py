@@ -543,6 +543,17 @@ class SlackWorkflow:
             return
 
         required_group_alias = item.get("approver_group")
+        if approver_slack_user_id == item.get("slack_user_id"):
+            logger.warning(f"Self-approval attempt by {approver_slack_user_id} for {request_id}")
+            try:
+                self._send_slack_dm(
+                    approver_slack_user_id,
+                    f"❌ You cannot approve your own request `{request_id}`."
+                )
+            except Exception:
+                logger.warning("Failed to notify self-approver via Slack DM")
+            return
+
         if not self._is_approver_authorized(approver_slack_user_id, required_group_alias):
             logger.warning(f"Unauthorized approval attempt by {approver_slack_user_id} for {request_id}")
             try:
