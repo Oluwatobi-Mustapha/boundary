@@ -345,7 +345,7 @@ class SlackWorkflow:
             if not permission_set_arn:
                 raise WorkflowError(
                     f"Configuration Error: Could not find the true AWS ARN for '{permission_set}'. "
-                    f"Expected env var '{env_key}'. Check your Terraform extra_env_vars!"
+                    f"Contact your admin — no ARN mapping found for '{permission_set}'."
                 )
 
             # 3. Policy Evaluation
