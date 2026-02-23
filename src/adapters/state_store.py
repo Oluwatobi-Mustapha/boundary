@@ -1,7 +1,7 @@
 import boto3
 import time
 from decimal import Decimal
-from typing import List
+from typing import Dict, List, Optional, Union
 from botocore.exceptions import ClientError
 from src.models.request import AccessRequest
 
@@ -45,16 +45,37 @@ class StateStore:
         except ClientError as e:
             raise Exception(f"Failed to save state to DynamoDB: {e}")
 
-    def update_status(self, request_id: str, new_status: str):
+    def update_status(
+        self,
+        request_id: str,
+        new_status: str,
+        extra_updates: Optional[Dict[str, Union[str, float, int, Decimal]]] = None,
+    ):
         """
-        Updates just the status of a request (e.g., PENDING -> ACTIVE -> REVOKED).
+        Updates the status of a request (e.g., PENDING -> ACTIVE -> REVOKED).
+        Optionally sets additional attributes provided via *extra_updates*.
         """
+        expr_parts = ["#s = :status"]
+        attr_names: Dict[str, str] = {"#s": "status"}
+        attr_values: Dict[str, Union[str, float, int, Decimal]] = {":status": new_status}
+
+        if extra_updates:
+            for idx, (key, value) in enumerate(extra_updates.items()):
+                placeholder_name = f"#eu{idx}"
+                placeholder_value = f":eu{idx}"
+                expr_parts.append(f"{placeholder_name} = {placeholder_value}")
+                attr_names[placeholder_name] = key
+                if isinstance(value, float):
+                    attr_values[placeholder_value] = self._float_to_decimal(value)
+                else:
+                    attr_values[placeholder_value] = value
+
         try:
             self.table.update_item(
                 Key={"request_id": request_id},
-                UpdateExpression="set #s = :status",
-                ExpressionAttributeNames={"#s": "status"},
-                ExpressionAttributeValues={":status": new_status}
+                UpdateExpression="SET " + ", ".join(expr_parts),
+                ExpressionAttributeNames=attr_names,
+                ExpressionAttributeValues=attr_values,
             )
         except ClientError as e:
             raise Exception(f"Failed to update status for {request_id}: {e}")
