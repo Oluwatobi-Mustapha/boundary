@@ -55,6 +55,46 @@ This index supports the following query pattern:
 This allows the revocation worker to run safely every minute
 without scanning the entire table.
 
+### GSI: StatusCreatedAtIndex
+
+- **GSI Partition Key:**  
+  - `status` (string)
+
+- **GSI Sort Key:**  
+  - `created_at` (number, Unix epoch seconds)
+
+Used for status-centric API/UI timeline queries over a date range.
+
+### GSI: AccountCreatedAtIndex
+
+- **GSI Partition Key:**  
+  - `account_id` (string)
+
+- **GSI Sort Key:**  
+  - `created_at` (number, Unix epoch seconds)
+
+Used for account-centric request history and filtering.
+
+### GSI: RequesterCreatedAtIndex
+
+- **GSI Partition Key:**  
+  - `requester_slack_user_id` (string)
+
+- **GSI Sort Key:**  
+  - `created_at` (number, Unix epoch seconds)
+
+Used for requester drill-down and per-user history views.
+
+### GSI: RoleCreatedAtIndex
+
+- **GSI Partition Key:**  
+  - `permission_set_name` (string)
+
+- **GSI Sort Key:**  
+  - `created_at` (number, Unix epoch seconds)
+
+Used for role-based reporting and policy analytics.
+
 ---
 
 ## Attributes
@@ -68,14 +108,18 @@ without scanning the entire table.
 | `permission_set_arn` | String | CRITICAL: The ARN of the Permission Set (Immutable) |
 | `account_id` | String | AWS account ID where access was granted |
 | `instance_arn` | String | The SSO Instance ARN (Required for API calls) |
-| `status` | String | PENDING, ACTIVE, REVOKED, ERROR |
+| `status` | String | PENDING_APPROVAL, APPROVED, ACTIVE, REVOKED, DENIED, ERROR |
 | `ticket_id` | String | Approval or change-management reference |
 | `rule_id` | String | ID of the rule from access_rules.yaml |
 | `requested_at` | Number | Request creation time (epoch seconds) |
+| `created_at` | Number | Immutable creation timestamp used for query indexes |
+| `updated_at` | Number | Last state update timestamp |
 | `expires_at` | Number | Time when access must be revoked |
 | `revoked_at` | Number | Time when access was actually revoked |
 | `ttl` | Number | DynamoDB TTL attribute (e.g., expires_at + 90 days) for auto-deletion |
 | `slack_user_id` | String | The Slack ID (e.g., U123456) for ChatOps mapping and DMs. **ACTIVE:** Used by SlackWorkflow for identity translation chain (Slack ID → Email → AWS Principal ID). |
+| `requester_slack_user_id` | String | Canonical requester Slack ID for query/index use |
+| `approver_slack_user_id` | String | Approver Slack ID for approval audit trail |
 | `slack_response_url` | String | Temporary webhook for asynchronous Slack replies. **ACTIVE:** Used by SlackWorkflow to send success/error messages after policy evaluation. Validated to prevent URL injection attacks. |
 | `slack_channel_id` | String | Slack channel where the request originated (for approvals). **RESERVED:** Not yet used by current implementation. |
 
@@ -85,7 +129,7 @@ without scanning the entire table.
 
 ### 1. Create Access Request
 
-- Insert new item with status = PENDING or ACTIVE
+- Insert new item with status = PENDING_APPROVAL or APPROVED or ACTIVE
 - Resolve Names to ARNs before inserting.
 
 ### 2. Recover After Bot Crash
@@ -105,7 +149,14 @@ without scanning the entire table.
 - All operations reference request_id
 - Safe retries without duplicating access grants
 
-### 5. Asynchronous ChatOps Notifications
+### 5. API Query Paths (Read-Only)
+
+- Query by `status` + date range via `StatusCreatedAtIndex`
+- Query by `account_id` + date range via `AccountCreatedAtIndex`
+- Query by `requester_slack_user_id` + date range via `RequesterCreatedAtIndex`
+- Query by `permission_set_name` + date range via `RoleCreatedAtIndex`
+
+### 6. Asynchronous ChatOps Notifications
 
 - **SlackWorkflow** reads `slack_response_url` to send final provision/deny messages back to the user after policy evaluation completes
 - **SlackWorkflow** uses `slack_user_id` to initiate identity translation chain: Slack User ID → Email (via SlackAdapter) → AWS Principal ID (via IdentityStoreAdapter)

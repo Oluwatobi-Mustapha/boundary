@@ -11,7 +11,7 @@ class AccessRequest:
     """
     Represents an access request within the system.
     This mirrors the DynamoDB schema we designed in DATABASE_SCHEMA.md.
-    
+
     Attributes:
         request_id: Unique UUID for the request.
         principal_id: The AWS Identity Center User GUID.
@@ -26,6 +26,24 @@ class AccessRequest:
         ticket_id: Optional reference to an external ticket (Jira/ServiceNow).
         requested_at: Unix timestamp of the request creation.
         expires_at: Unix timestamp when access must be revoked.
+        created_at: Unix timestamp for DynamoDB record creation (defaults to requested_at).
+        updated_at: Unix timestamp of last status update.
+        slack_user_id: Slack user ID of the requesting user.
+        requester_slack_user_id: Slack user ID used for requester-based queries.
+        slack_response_url: Slack webhook URL for async replies.
+        approval_required: Whether this request requires human approval.
+        approval_channel: Slack channel for approval notifications.
+        approver_group: IDP group authorized to approve.
+        approver_slack_user_id: Slack user ID of the approver.
+        approved_by: Identifier of who approved the request.
+        approved_at: Unix timestamp of approval.
+        denied_by: Identifier of who denied the request.
+        denied_at: Unix timestamp of denial.
+        reason: Human-readable reason for the decision.
+        policy_hash: SHA256 hash of the evaluated policy file.
+        engine_version: Version of the policy engine that evaluated this request.
+        evaluated_at: ISO 8601 timestamp of when evaluation occurred.
+        revoked_at: Unix timestamp of when access was revoked.
     """
     request_id: str
     principal_id: str

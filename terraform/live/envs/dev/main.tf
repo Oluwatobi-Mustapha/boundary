@@ -35,9 +35,16 @@ module "boundary_bot" {
   sso_instance_arn  = module.boundary_identity.sso_instance_arn
   identity_store_id = module.boundary_identity.identity_store_id
 
-  # Wiring Secrets (Config) -> Bot
-  # Pass the secrets from tfvars down to the Lambda
-  extra_env_vars = var.boundary_secrets
+  # Wiring Secrets + Identity outputs (Config) -> Bot
+  extra_env_vars = merge(
+    var.boundary_secrets,
+    {
+      BOUNDARY_DEVELOPERS_ID      = module.boundary_identity.group_ids[var.boundary_group_name_map.developers]
+      BOUNDARY_AUDITORS_ID        = module.boundary_identity.group_ids[var.boundary_group_name_map.auditors]
+      BOUNDARY_SECURITY_ADMINS_ID = module.boundary_identity.group_ids[var.boundary_group_name_map.security_admins]
+    },
+    module.boundary_identity.permission_set_arns
+  )
 
   # Permission Set name -> ARN mapping (prefixed with PERMISSION_SET_ in Lambda env)
   permission_set_arns = module.boundary_identity.permission_set_arns
