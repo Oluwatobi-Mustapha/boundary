@@ -157,6 +157,10 @@ class StateStore:
     def update_status(self, request_id: str, new_status: str, extra_updates: Optional[Dict[str, Any]] = None):
         """
         Updates just the status of a request (e.g., PENDING -> ACTIVE -> REVOKED).
+
+        Uses a ConditionExpression to guarantee the transition is atomic:
+        the status in DynamoDB must still match what we read, preventing
+        a concurrent call from silently bypassing the transition check.
         """
         canonical_new_status = canonicalize_status(new_status)
         if not is_valid_status(canonical_new_status):
@@ -190,14 +194,35 @@ class StateStore:
                 set_clauses.append(f"{name_key} = {value_key}")
                 idx += 1
 
+        # Build a ConditionExpression so the write only succeeds if the
+        # current status still matches what we read (guards against TOCTOU).
+        condition_expression = None
+        if item and item.get("status"):
+            current_status = canonicalize_status(item["status"])
+            current_variants = sorted(status_equivalents(current_status))
+            condition_checks = []
+            for vidx, variant in enumerate(current_variants):
+                key = f":cur_status_{vidx}"
+                expression_values[key] = variant
+                condition_checks.append(f"#s = {key}")
+            condition_expression = " OR ".join(condition_checks)
+
         try:
-            self.table.update_item(
-                Key={"request_id": request_id},
-                UpdateExpression=f"SET {', '.join(set_clauses)}",
-                ExpressionAttributeNames=expression_names,
-                ExpressionAttributeValues=expression_values
-            )
+            update_kwargs: Dict[str, Any] = {
+                "Key": {"request_id": request_id},
+                "UpdateExpression": f"SET {', '.join(set_clauses)}",
+                "ExpressionAttributeNames": expression_names,
+                "ExpressionAttributeValues": expression_values,
+            }
+            if condition_expression:
+                update_kwargs["ConditionExpression"] = condition_expression
+            self.table.update_item(**update_kwargs)
         except ClientError as e:
+            if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+                raise ValueError(
+                    f"Concurrent status change detected for {request_id}: "
+                    f"status was modified after read. Retry the operation."
+                )
             raise Exception(f"Failed to update status for {request_id}: {e}")
 
     def get_expired_active_requests(self) -> List[dict]:
