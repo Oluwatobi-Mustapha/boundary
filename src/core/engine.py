@@ -3,8 +3,8 @@ import hashlib
 import datetime
 import os
 import re
-from src.models.request import AccessRequest 
-from src.models.aws_context import AWSAccountContext
+from models.request import AccessRequest
+from models.aws_context import AWSAccountContext
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 

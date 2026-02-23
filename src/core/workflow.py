@@ -1,7 +1,7 @@
-from src.core.engine import EvaluationResult
-from src.models.request import AccessRequest
-from src.core.engine import PolicyEngine
-from src.adapters.aws_orgs import AWSOrganizationsAdapter, AWSResourceNotFoundError
+from core.engine import EvaluationResult
+from models.request import AccessRequest
+from core.engine import PolicyEngine
+from adapters.aws_orgs import AWSOrganizationsAdapter, AWSResourceNotFoundError
 
 class AccessWorkflow:
     def __init__(self, engine: PolicyEngine, adapter: AWSOrganizationsAdapter):

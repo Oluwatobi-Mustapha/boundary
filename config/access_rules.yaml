@@ -16,20 +16,35 @@ subjects:
       description: "Cloud Security Team"
 
 rules:
-  # RULE 1: Staging Read Only
-  - id: "allow-dev-staging-ro"
-    description: "Developers can request ReadOnly on Staging OU"
+  # RULE 1: Production Read Only
+  - id: "allow-dev-prod-ro"
+    description: "Developers can request ReadOnly on production-tagged accounts"
     subjects: ["developers"]
     effect: allow
     target:
-      selector: "ou_id"
-      ids: ["${STAGING_OU_ID}"]
+      selector: "tag"
+      key: "Environment"
+      values: ["Production", "Prod"]
     permission_set: "ReadOnlyAccess"
     constraints:
       max_duration_hours: 8
       ticket_required: false
 
-  # RULE 2: Sandbox Admin
+  # RULE 2: Development PowerUser
+  - id: "allow-dev-development-poweruser"
+    description: "Developers can request PowerUser on development-tagged accounts"
+    subjects: ["developers"]
+    effect: allow
+    target:
+      selector: "tag"
+      key: "Environment"
+      values: ["Development", "Dev"]
+    permission_set: "PowerUserAccess"
+    constraints:
+      max_duration_hours: 4
+      ticket_required: false
+
+  # RULE 3: Sandbox Admin
   - id: "allow-dev-sandbox-admin"
     description: "Developers can request Admin on Sandbox accounts"
     subjects: ["developers"]
@@ -47,12 +62,12 @@ rules:
       approver_groups: ["security_admins"]
       channel: "#security-approvals"
 
-  # RULE 3: Explicit Deny
+  # RULE 4: Explicit Deny
   - id: "deny-dev-prod"
     description: "Explicitly forbid developers from Production OUs"
     subjects: ["developers"]
     effect: deny
     target:
       selector: "ou_id"
-      ids: ["${STAGING_OU_ID}"] # Typically this would be PROD_OU_ID, but using STAGING as per your last file
+      ids: ["${PROD_OU_ID}"]
     permission_set: "*"
