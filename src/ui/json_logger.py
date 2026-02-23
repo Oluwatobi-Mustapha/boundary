@@ -14,7 +14,7 @@ def to_serializable_dict(obj) -> dict:
     data = asdict(obj)
     
     # 2. List of fields we know are timestamps (Unix Epoch Floats)
-    timestamp_fields = ["requested_at", "expires_at", "effective_expires_at"]
+    timestamp_fields = ["requested_at", "expires_at", "effective_expires_at", "evaluated_at"]
     
     # 3. Loop through and REPLACE them with ISO strings
     for field in timestamp_fields:
@@ -38,7 +38,7 @@ def log_audit_event(req: AccessRequest, res: EvaluationResult, output_dir="audit
     # 2. Construct the Log Entry (The "Single Source of Truth")
     log_entry = {
         "schema_version": "1.1", 
-        "timestamp": res.evaluated_at,
+        "timestamp": datetime.datetime.fromtimestamp(res.evaluated_at, datetime.timezone.utc).isoformat(),
         "correlation_id": req.request_id,
         # Req 3: Integrity Metadata
         "engine_metadata": {

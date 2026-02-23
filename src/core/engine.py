@@ -1,6 +1,6 @@
 import yaml
 import hashlib
-import datetime
+import time
 import os
 import re
 from models.request import AccessRequest
@@ -23,8 +23,8 @@ class EvaluationResult:
     # --- Integrity Metadata ---
     policy_hash: str = "" 
     engine_version: str = ""  # Which version of code made this decision?
-    # capturing UTC time in ISO format automatically when created
-    evaluated_at: str = field(default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat())
+    # Unix timestamp (seconds since epoch) when the evaluation was performed
+    evaluated_at: float = field(default_factory=time.time)
     
     # --- Evidence Context ---
     # Stores specific OUs or Tags that led to the match.

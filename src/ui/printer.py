@@ -30,28 +30,6 @@ def _iso_utc_from_epoch_seconds(epoch_seconds: Optional[float]) -> str:
     )
 
 
-def _normalize_iso_utc_string(ts: str) -> str:
-    """
-    Normalize common ISO strings to the same look:
-    - convert +00:00 -> Z
-    - strip fractional seconds
-    Keeps other offsets intact.
-    """
-    if not ts:
-        return "-"
-    s = ts.strip()
-
-    # Convert +00:00 to Z when present
-    if s.endswith("+00:00"):
-        s = s[:-6] + "Z"
-
-    # Strip fractional seconds if present (e.g., 2026-...:05.092154Z)
-    if s.endswith("Z") and "." in s:
-        left, _ = s.split(".", 1)
-        s = left + "Z"
-
-    return s
-
 
 def _safe_get(obj: Any, key: str, default: Any = None) -> Any:
     """Supports dataclass, dict-like, or attribute access."""
@@ -227,12 +205,7 @@ def print_verdict(
     requested_utc = _iso_utc_from_epoch_seconds(_safe_get(req, "requested_at", None))
     expires_utc = _iso_utc_from_epoch_seconds(_safe_get(res, "effective_expires_at", None))
 
-    # evaluated_at can come from engine as a string; normalize it.
-    evaluated_at = _safe_get(res, "evaluated_at", None)
-    if isinstance(evaluated_at, str) and evaluated_at.strip():
-        evaluated_utc = _normalize_iso_utc_string(evaluated_at)
-    else:
-        evaluated_utc = _iso_utc_now_seconds()
+    evaluated_utc = _iso_utc_from_epoch_seconds(_safe_get(res, "evaluated_at", None))
 
     policy_hash = _safe_get(res, "policy_hash", "") or ""
     policy_hash_short = f"{policy_hash[:16]}…" if policy_hash else "-"

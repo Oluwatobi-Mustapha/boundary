@@ -51,7 +51,7 @@ class AccessRequest:
     reason: Optional[str] = None
     policy_hash: Optional[str] = None
     engine_version: Optional[str] = None
-    evaluated_at: Optional[str] = None
+    evaluated_at: Optional[float] = None
     revoked_at: Optional[float] = None
     requested_at: float = field(default_factory=time.time)
     created_at: Optional[float] = None
