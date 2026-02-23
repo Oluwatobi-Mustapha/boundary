@@ -132,6 +132,12 @@ audit_logs/
 .log
 dev-logs/.log
 
+# Python dependencies installed into src/ (Lambda build artifacts)
+src/yaml/
+src/_yaml/
+src/*.dist-info/
+src/access_rules.yaml
+
 # Local .terraform directories
 **/.terraform/*
 # Terraform lock file (keep it)
