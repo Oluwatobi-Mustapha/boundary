@@ -173,6 +173,13 @@ class StateStore:
         if not item:
             raise ValueError(f"Request {request_id} not found")
 
+        current_status = canonicalize_status(item.get("status", ""))
+        if not can_transition(current_status, canonical_new_status):
+            raise ValueError(
+                f"Invalid status transition for {request_id}: "
+                f"{current_status} -> {canonical_new_status}"
+            )
+
         expression_names: Dict[str, str] = {"#s": "status", "#u": "updated_at"}
         expression_values: Dict[str, Any] = {
             ":status": canonical_new_status,
