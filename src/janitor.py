@@ -168,7 +168,7 @@ def run_revocation_loop(table_name: str, dry_run: bool = False):
                 account_id=account,
                 permission_set_arn=item['permission_set_arn'],
                 instance_arn=item['instance_arn'],
-                principal_type=item.get('principal_type', 'GROUP')
+                principal_type=item.get('principal_type', 'USER')
             )
 
             # B. Update DB Status
