@@ -62,7 +62,18 @@ rules:
       approver_groups: ["security_admins"]
       channel: "#security-approvals"
 
-  # RULE 4: Explicit Deny
+  # RULE 4: Explicit Deny (tag-based, mirrors Rule 5 for consistent coverage)
+  - id: "deny-dev-prod-tag"
+    description: "Explicitly forbid developers from production-tagged accounts"
+    subjects: ["developers"]
+    effect: deny
+    target:
+      selector: "tag"
+      key: "Environment"
+      values: ["Production", "Prod"]
+    permission_set: "*"
+
+  # RULE 5: Explicit Deny (OU-based)
   - id: "deny-dev-prod"
     description: "Explicitly forbid developers from Production OUs"
     subjects: ["developers"]
