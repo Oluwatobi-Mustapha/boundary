@@ -72,9 +72,9 @@ def can_transition(current_status: str, new_status: str) -> bool:
     current = canonicalize_status(current_status)
     new = canonicalize_status(new_status)
 
-    if current == new:
-        return True
     if current not in VALID_STATES or new not in VALID_STATES:
         return False
+    if current == new:
+        return True
 
     return new in _ALLOWED_TRANSITIONS.get(current, set())
