@@ -8,8 +8,8 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
-from src.models.request import AccessRequest
-from src.core.engine import EvaluationResult
+from models.request import AccessRequest
+from core.engine import EvaluationResult
 
 
 # ---------- Helpers ----------

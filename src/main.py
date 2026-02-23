@@ -9,14 +9,14 @@ import logging
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # ----------------
 
-from src.core.engine import PolicyEngine
-from src.core.workflow import AccessWorkflow
-from src.models.request import AccessRequest
-from src.adapters.aws_orgs import AWSOrganizationsAdapter, AWSResourceNotFoundError
-from src.adapters.state_store import StateStore
-from src.ui.printer import print_verdict
-from src.ui.json_logger import log_audit_event
-from src.validators import validate_duration, validate_account_id, validate_arn
+from core.engine import PolicyEngine
+from core.workflow import AccessWorkflow
+from models.request import AccessRequest
+from adapters.aws_orgs import AWSOrganizationsAdapter, AWSResourceNotFoundError
+from adapters.state_store import StateStore
+from ui.printer import print_verdict
+from ui.json_logger import log_audit_event
+from validators import validate_duration, validate_account_id, validate_arn
 
 def main():
     parser = argparse.ArgumentParser(description="Boundary: Ephemeral Access System (Production)")

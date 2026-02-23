@@ -1,7 +1,7 @@
 import boto3
 import time
 from decimal import Decimal
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union
 from botocore.exceptions import ClientError
 from models.request import AccessRequest
 from models.request_states import (
@@ -154,22 +154,30 @@ class StateStore:
         except ClientError as e:
             raise Exception(f"Failed to save state to DynamoDB: {e}")
 
-    def update_status(self, request_id: str, new_status: str, extra_updates: Optional[Dict[str, Any]] = None):
+    def update_status(
+        self,
+        request_id: str,
+        new_status: str,
+        extra_updates: Optional[Dict[str, Union[str, float, int, Decimal]]] = None,
+    ):
         """
-        Updates just the status of a request (e.g., PENDING -> ACTIVE -> REVOKED).
-
-        Uses a ConditionExpression to guarantee the transition is atomic:
-        the status in DynamoDB must still match what we read, preventing
-        a concurrent call from silently bypassing the transition check.
+        Updates the status of a request (e.g., PENDING -> ACTIVE -> REVOKED).
+        Optionally sets additional attributes provided via *extra_updates*.
         """
         canonical_new_status = canonicalize_status(new_status)
         if not is_valid_status(canonical_new_status):
-            raise ValueError(f"Invalid status update requested: {new_status}")
+            raise ValueError(f"Invalid status: {new_status}")
 
+        # Fetch current item for optimistic locking
         item = self.get_request(request_id)
-        if item and item.get("status") and not can_transition(item.get("status"), canonical_new_status):
+        if not item:
+            raise ValueError(f"Request {request_id} not found")
+
+        current_status = canonicalize_status(item.get("status", ""))
+        if not can_transition(current_status, canonical_new_status):
             raise ValueError(
-                f"Invalid status transition for {request_id}: {item.get('status')} -> {canonical_new_status}"
+                f"Invalid status transition for {request_id}: "
+                f"{current_status} -> {canonical_new_status}"
             )
 
         expression_names: Dict[str, str] = {"#s": "status", "#u": "updated_at"}
