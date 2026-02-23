@@ -106,7 +106,7 @@ boundary_secrets = {
   },
   "arn:aws:iam::123456789012:role/BoundaryViewerApiRole": {
     "roles": ["viewer"],
-    "accounts": ["184425328037"],
+    "accounts": ["123456789012"],
     "requesters": ["U1234567890"],
     "permission_sets": ["ReadOnlyAccess", "PowerUserAccess"],
     "statuses": ["ACTIVE", "REVOKED", "DENIED"]
