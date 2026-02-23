@@ -119,17 +119,28 @@ class AWSOrganizationsAdapter:
 
     # --- WRITE METHODS (NEW) ---
 
-    def assign_user_to_account(self, principal_id: str, account_id: str, permission_set_arn: str, instance_arn: str):
+    def assign_user_to_account(
+        self,
+        principal_id: str,
+        account_id: str,
+        permission_set_arn: str,
+        instance_arn: str,
+        principal_type: str = "GROUP"
+    ):
         """
         PROVISIONING: Calls AWS to actually grant the access.
         """
+        principal_type = principal_type.upper()
+        if principal_type not in {"USER", "GROUP"}:
+            raise ValueError(f"Invalid principal_type: {principal_type}")
+
         try:
             self.sso.create_account_assignment(
                 InstanceArn=instance_arn,
                 TargetId=account_id,
                 TargetType='AWS_ACCOUNT',
                 PermissionSetArn=permission_set_arn,
-                PrincipalType='GROUP', 
+                PrincipalType=principal_type,
                 PrincipalId=principal_id
             )
             self.logger.info(f"AWS API: Granted access for {principal_id} on {account_id}")
@@ -144,6 +155,10 @@ class AWSOrganizationsAdapter:
         """
         REVOCATION: Calls AWS to remove the access.
         """
+        principal_type = principal_type.upper()
+        if principal_type not in {"USER", "GROUP"}:
+            raise ValueError(f"Invalid principal_type: {principal_type}")
+
         try:
             self.sso.delete_account_assignment(
                 InstanceArn=instance_arn,
