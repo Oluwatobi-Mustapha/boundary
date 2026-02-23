@@ -9,13 +9,16 @@ resource "aws_lambda_function" "workflow_manager" {
   source_code_hash = data.archive_file.lambda_package.output_base64sha256
 
   environment {
-    variables = {
-      ENVIRONMENT       = var.environment
-      DYNAMODB_TABLE    = var.dynamodb_table_name
-      LOG_LEVEL         = "INFO"
-      IDENTITY_STORE_ID = var.identity_store_id
-      SSO_INSTANCE_ARN  = var.sso_instance_arn
-    }
+    variables = merge(
+      {
+        ENVIRONMENT       = var.environment
+        DYNAMODB_TABLE    = var.dynamodb_table_name
+        LOG_LEVEL         = "INFO"
+        IDENTITY_STORE_ID = var.identity_store_id
+        SSO_INSTANCE_ARN  = var.sso_instance_arn
+      },
+      var.extra_env_vars
+    )
   }
 }
 
@@ -60,6 +63,7 @@ resource "aws_iam_role_policy" "workflow_dynamodb" {
         Action = [
           "dynamodb:Query",
           "dynamodb:GetItem",
+          "dynamodb:PutItem",
           "dynamodb:UpdateItem"
         ]
         Resource = [
@@ -79,17 +83,16 @@ resource "aws_iam_role_policy" "workflow_aws_services" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "SSMParameterAccess"
-        Effect = "Allow"
-        Action = [
-          "ssm:GetParameter"
-        ]
+        Sid      = "SSMParameterAccess"
+        Effect   = "Allow"
+        Action   = ["ssm:GetParameter"]
         Resource = "arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/boundary/*"
       },
       {
         Sid    = "IdentityStoreAccess"
         Effect = "Allow"
         Action = [
+          "identitystore:GetUserId",
           "identitystore:DescribeUser",
           "identitystore:ListUsers",
           "identitystore:ListGroupMembershipsForMember"
@@ -97,11 +100,15 @@ resource "aws_iam_role_policy" "workflow_aws_services" {
         Resource = "*"
       },
       {
-        Sid    = "OrganizationsAccess"
+        Sid    = "OrganizationsAndSSOAccess"
         Effect = "Allow"
         Action = [
           "organizations:DescribeAccount",
-          "organizations:ListTagsForResource"
+          "organizations:ListTagsForResource",
+          "organizations:ListParents",
+          "organizations:DescribeOrganizationalUnit",
+          "sso:CreateAccountAssignment",
+          "sso:DeleteAccountAssignment"
         ]
         Resource = "*"
       }
