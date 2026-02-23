@@ -129,7 +129,7 @@ Used for role-based reporting and policy analytics.
 
 ### 1. Create Access Request
 
-- Insert new item with status = PENDING or ACTIVE
+- Insert new item with status = PENDING_APPROVAL or APPROVED or ACTIVE
 - Resolve Names to ARNs before inserting.
 
 ### 2. Recover After Bot Crash
