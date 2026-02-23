@@ -17,3 +17,18 @@ output "slack_webhook_url" {
   value       = module.boundary_bot.slack_webhook_url
   description = "The public webhook URL for the Slack App"
 }
+
+output "audit_api_base_url" {
+  value       = module.boundary_bot.audit_api_base_url
+  description = "Base URL for the read-only audit API"
+}
+
+output "audit_dashboard_url" {
+  value       = module.boundary_bot.audit_dashboard_url
+  description = "Entry URL for the read-only audit dashboard"
+}
+
+output "audit_read_invoke_policy_arn" {
+  value       = module.boundary_bot.audit_read_invoke_policy_arn
+  description = "Managed policy ARN to attach on audit API/dashboard caller roles"
+}
