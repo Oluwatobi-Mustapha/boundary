@@ -21,6 +21,7 @@ sys.path.insert(0, SRC)
 os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
 os.environ.setdefault("AWS_EC2_METADATA_DISABLED", "true")
 
+import models.aws_context  # Ensure models package is loaded first
 from core.engine import PolicyEngine
 from models.aws_context import AWSAccountContext
 from workflows.access_workflow import SlackWorkflow
@@ -191,9 +192,9 @@ def configured_env(monkeypatch):
         "STAGING_OU_ID": "ou-9e0f-06fgnz07",
         "PROD_OU_ID": "ou-9e0f-prod00001",
         "SSO_INSTANCE_ARN": "arn:aws:sso:::instance/ssoins-1234567890abcdef",
-        "ReadOnlyAccess": "arn:aws:sso:::permissionSet/ssoins-1234567890abcdef/ps-readonly",
-        "PowerUserAccess": "arn:aws:sso:::permissionSet/ssoins-1234567890abcdef/ps-poweruser",
-        "AdministratorAccess": "arn:aws:sso:::permissionSet/ssoins-1234567890abcdef/ps-admin",
+        "PERMISSION_SET_ReadOnlyAccess": "arn:aws:sso:::permissionSet/ssoins-1234567890abcdef/ps-readonly",
+        "PERMISSION_SET_PowerUserAccess": "arn:aws:sso:::permissionSet/ssoins-1234567890abcdef/ps-poweruser",
+        "PERMISSION_SET_AdministratorAccess": "arn:aws:sso:::permissionSet/ssoins-1234567890abcdef/ps-admin",
         "AWS_SSO_START_URL": "https://d-90660198e6.awsapps.com/start",
     }
     for key, value in env.items():
