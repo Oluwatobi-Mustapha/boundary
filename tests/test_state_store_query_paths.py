@@ -1,6 +1,7 @@
 """
 Unit tests for Step 3 query paths (DynamoDB GSI-backed reads).
 """
+import importlib
 import os
 import sys
 
@@ -10,8 +11,28 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SRC = os.path.join(ROOT, "src")
 sys.path.insert(0, SRC)
 
-from adapters.state_store import StateStore
-from models.request_states import STATE_PENDING_APPROVAL
+# Other test files may inject fake stub modules into sys.modules at import
+# time (e.g. test_permission_set_env_lookup.py replaces adapters.state_store
+# with a MagicMock-backed stub).  Purge those entries so we always get the
+# *real* modules for this test file.
+_MODULES_TO_RELOAD = [
+    "adapters",
+    "adapters.state_store",
+    "models",
+    "models.request",
+    "models.request_states",
+]
+for _mod_name in _MODULES_TO_RELOAD:
+    sys.modules.pop(_mod_name, None)
+
+# Also restore the real boto3 if it was replaced by a MagicMock
+import boto3 as _boto3_check
+if not hasattr(_boto3_check, "__file__"):
+    sys.modules.pop("boto3", None)
+    importlib.invalidate_caches()
+
+from adapters.state_store import StateStore  # noqa: E402
+from models.request_states import STATE_PENDING_APPROVAL  # noqa: E402
 
 
 class _FakeTable:
