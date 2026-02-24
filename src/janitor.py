@@ -88,7 +88,10 @@ def run_revocation_loop(table_name: str, dry_run: bool = False):
             # C. Notify the user
             slack_user_id = item.get("slack_user_id")
             if slack_user_id:
-                notify_revocation(slack_user_id, item)
+                try:
+                    notify_revocation(slack_user_id, item)
+                except Exception as notify_err:
+                    logger.warning(f"Failed to notify {slack_user_id} for {req_id}: {notify_err}")
 
             logger.info(f"✅ Successfully revoked {req_id}")
             revocation_count += 1
