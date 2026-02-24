@@ -62,8 +62,6 @@ jobs:
 
       - name: Unit Tests
         # Run tests if the directory exists
-        env:
-          PYTHONPATH: ${{ github.workspace }}/src
         run: |
           if [ -d "tests" ]; then
             pytest tests/

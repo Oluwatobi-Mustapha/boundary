@@ -14,7 +14,8 @@ import pytest
 
 # Ensure imports resolve like the Lambda package layout.
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-sys.path.insert(0, ROOT)
+SRC = os.path.join(ROOT, "src")
+sys.path.insert(0, SRC)
 
 # Prevent boto3 from trying EC2 metadata in local test runs.
 os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
