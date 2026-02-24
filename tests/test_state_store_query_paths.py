@@ -36,13 +36,14 @@ class _FakeDynamo:
 
 def _build_store(monkeypatch):
     import boto3
-    
+
     table = _FakeTable()
-    monkeypatch.setattr(
-        boto3,
-        "resource",
-        lambda _service_name, region_name=None: _FakeDynamo(table)
-    )
+    fake_dynamo = _FakeDynamo(table)
+
+    def _fake_resource(_service_name, **_kwargs):
+        return fake_dynamo
+
+    monkeypatch.setattr(boto3, "resource", _fake_resource)
     return StateStore("boundary-dev-active-requests"), table
 
 
