@@ -18,6 +18,29 @@ variable "permission_sets" {
   }))
 }
 
+variable "boundary_group_name_map" {
+  description = "Maps logical Boundary roles to Identity Store group display names."
+  type = object({
+    developers      = string
+    auditors        = string
+    security_admins = string
+  })
+  default = {
+    developers      = "Boundary-Developers"
+    auditors        = "Boundary-Auditors"
+    security_admins = "Boundary-Security-Admins"
+  }
+
+  validation {
+    condition = (
+      length(trimspace(var.boundary_group_name_map.developers)) > 0 &&
+      length(trimspace(var.boundary_group_name_map.auditors)) > 0 &&
+      length(trimspace(var.boundary_group_name_map.security_admins)) > 0
+    )
+    error_message = "All boundary_group_name_map values must be non-empty group display names."
+  }
+}
+
 # --- NEW: SECRETS PASS-THROUGH ---
 variable "boundary_secrets" {
   description = "Map of configuration secrets (Group IDs, OU IDs) to pass to the Lambda environment"

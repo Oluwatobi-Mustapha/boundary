@@ -3,25 +3,47 @@ from typing import Optional
 import time
 import uuid
 
+from models.request_states import STATE_PENDING_APPROVAL, canonicalize_status
+
+
 @dataclass
 class AccessRequest:
     """
     Represents an access request within the system.
     This mirrors the DynamoDB schema we designed in DATABASE_SCHEMA.md.
-    
+
     Attributes:
         request_id: Unique UUID for the request.
         principal_id: The AWS Identity Center User GUID.
         principal_type: Usually 'USER'.
+        slack_user_id: Slack user ID for requester notifications (optional).
         permission_set_arn: The immutable ARN of the requested permission set.
         permission_set_name: Human-readable name (e.g., ReadOnlyAccess) used for policy matching.
         account_id: The target 12-digit AWS Account ID.
         instance_arn: The ARN of the SSO instance.
         rule_id: The ID of the rule from access_rules.yaml that authorized this.
-        status: The current state (PENDING, ACTIVE, REVOKED, ERROR).
+        status: The current state in the access lifecycle.
         ticket_id: Optional reference to an external ticket (Jira/ServiceNow).
         requested_at: Unix timestamp of the request creation.
         expires_at: Unix timestamp when access must be revoked.
+        created_at: Unix timestamp for DynamoDB record creation (defaults to requested_at).
+        updated_at: Unix timestamp of last status update.
+        slack_user_id: Slack user ID of the requesting user.
+        requester_slack_user_id: Slack user ID used for requester-based queries.
+        slack_response_url: Slack webhook URL for async replies.
+        approval_required: Whether this request requires human approval.
+        approval_channel: Slack channel for approval notifications.
+        approver_group: IDP group authorized to approve.
+        approver_slack_user_id: Slack user ID of the approver.
+        approved_by: Identifier of who approved the request.
+        approved_at: Unix timestamp of approval.
+        denied_by: Identifier of who denied the request.
+        denied_at: Unix timestamp of denial.
+        reason: Human-readable reason for the decision.
+        policy_hash: SHA256 hash of the evaluated policy file.
+        engine_version: Version of the policy engine that evaluated this request.
+        evaluated_at: ISO 8601 timestamp of when evaluation occurred.
+        revoked_at: Unix timestamp of when access was revoked.
     """
     request_id: str
     principal_id: str
@@ -31,11 +53,43 @@ class AccessRequest:
     account_id: str
     instance_arn: str
     rule_id: str
-    status: str = "PENDING"
+    status: str = STATE_PENDING_APPROVAL
     ticket_id: Optional[str] = None
+    slack_user_id: Optional[str] = None
+    requester_slack_user_id: Optional[str] = None
+    slack_response_url: Optional[str] = None
+    approval_required: bool = False
+    approval_channel: Optional[str] = None
+    approver_group: Optional[str] = None
+    approver_slack_user_id: Optional[str] = None
+    approved_by: Optional[str] = None
+    approved_at: Optional[float] = None
+    denied_by: Optional[str] = None
+    denied_at: Optional[float] = None
+    reason: Optional[str] = None
+    policy_hash: Optional[str] = None
+    engine_version: Optional[str] = None
+    evaluated_at: Optional[float] = None
+    revoked_at: Optional[float] = None
     requested_at: float = field(default_factory=time.time)
+    created_at: Optional[float] = None
+    updated_at: Optional[float] = None
     expires_at: float = 0.0
-    
+
+    def __post_init__(self) -> None:
+        # Keep storage canonical while accepting legacy values.
+        self.status = canonicalize_status(self.status)
+
+        # Backward-compatible audit aliases.
+        if not self.requester_slack_user_id and self.slack_user_id:
+            self.requester_slack_user_id = self.slack_user_id
+        if self.requester_slack_user_id and not self.slack_user_id:
+            self.slack_user_id = self.requester_slack_user_id
+
+        # Immutable creation timestamp alias for future indexing/API.
+        if self.created_at is None:
+            self.created_at = self.requested_at
+
     @staticmethod
     def create_id() -> str:
         """Generates a unique ID for the request."""

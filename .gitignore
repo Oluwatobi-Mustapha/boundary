@@ -138,6 +138,9 @@ src/_yaml/
 src/*.dist-info/
 src/access_rules.yaml
 
+# Screenshots and diagrams
+terraform/live/envs/dev/*.png
+
 # Local .terraform directories
 **/.terraform/*
 # Terraform lock file (keep it)

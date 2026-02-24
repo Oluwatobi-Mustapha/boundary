@@ -9,6 +9,10 @@
 #    - Rename groups to match your naming convention
 #    - Add/remove permission sets
 #    - Adjust session_duration limits (PT1H, PT2H, PT4H, etc)
+#    - Set required values in boundary_secrets:
+#      - STAGING_OU_ID
+#      - PROD_OU_ID
+#      - AWS_SSO_START_URL
 #
 # 3) Run Terraform from this folder:
 #      terraform init
@@ -18,6 +22,8 @@
 # Notes:
 # - This module expects AWS-managed policy ARNs in managed_policies.
 # - Do NOT commit your real terraform.tfvars. Keep it local.
+# - Approval rules in config/access_rules.yaml currently use #security-approvals.
+#   Ensure that channel exists and Boundary JIT is invited.
 # ------------------------------------------------------------------------------
 
 # 1) Groups to create in AWS Identity Store
@@ -27,6 +33,15 @@ groups = [
   "Boundary-Security-Admins",
   "Boundary-Auditors"
 ]
+
+# Optional: map logical Boundary roles to actual group display names in your org.
+# Defaults in variables.tf already point to the names above, so this can be omitted
+# if you keep default naming.
+boundary_group_name_map = {
+  developers      = "Boundary-Developers"
+  auditors        = "Boundary-Auditors"
+  security_admins = "Boundary-Security-Admins"
+}
 
 # 2) Permission Sets to create in IAM Identity Center
 # Key = Permission Set name as it will appear in AWS SSO.
@@ -54,4 +69,48 @@ permission_sets = {
       "arn:aws:iam::aws:policy/PowerUserAccess"
     ]
   }
+}
+
+# 3) Runtime config passed into Lambda env vars
+# Required values:
+# - STAGING_OU_ID is used by allow rules targeting staging.
+# - PROD_OU_ID is used by deny rules protecting production.
+# - AWS_SSO_START_URL powers the "Click Here to Login" button in Slack success messages.
+#   Example: https://d-1234567890.awsapps.com/start
+# - AUDIT_API_PRINCIPAL_MAP configures RBAC + ABAC scopes for the read-only audit API.
+#
+# Note:
+# - BOUNDARY_DEVELOPERS_ID / BOUNDARY_SECURITY_ADMINS_ID / BOUNDARY_AUDITORS_ID
+#   are auto-injected from module outputs in terraform/live/envs/dev/main.tf.
+#   You do NOT need to set them manually here.
+boundary_secrets = {
+  STAGING_OU_ID     = "ou-xxxx-yyyyyyyy"
+  PROD_OU_ID        = "ou-xxxx-zzzzzzzz"
+  AWS_SSO_START_URL = "https://d-1234567890.awsapps.com/start"
+  LOG_LEVEL         = "INFO"
+  AUDIT_API_PRINCIPAL_MAP = <<JSON
+{
+  "arn:aws:iam::123456789012:role/BoundarySecurityAdminApiRole": {
+    "roles": ["security_admin"],
+    "accounts": ["*"],
+    "requesters": ["*"],
+    "permission_sets": ["*"],
+    "statuses": ["*"]
+  },
+  "arn:aws:iam::123456789012:role/BoundaryAuditorApiRole": {
+    "roles": ["auditor"],
+    "accounts": ["*"],
+    "requesters": ["*"],
+    "permission_sets": ["*"],
+    "statuses": ["*"]
+  },
+  "arn:aws:iam::123456789012:role/BoundaryViewerApiRole": {
+    "roles": ["viewer"],
+    "accounts": ["123456789012"],
+    "requesters": ["U1234567890"],
+    "permission_sets": ["ReadOnlyAccess", "PowerUserAccess"],
+    "statuses": ["ACTIVE", "REVOKED", "DENIED"]
+  }
+}
+JSON
 }
