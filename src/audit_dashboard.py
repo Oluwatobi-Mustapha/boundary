@@ -74,13 +74,12 @@ def _parse_float(name: str, raw: Optional[str]) -> Optional[float]:
 
 
 def _parse_dashboard_filters(query: Dict[str, str]) -> Dict[str, Any]:
-    status = (query.get("status") or "").strip()
-    if status:
-        status = canonicalize_status(status)
+    status_raw = (query.get("status") or "").strip()
+    status: Optional[str] = None
+    if status_raw:
+        status = canonicalize_status(status_raw)
         if not is_valid_status(status):
             raise ValueError("status is invalid")
-    else:
-        status = None
 
     account_id = (query.get("account_id") or "").strip() or None
     permission_set_name = (query.get("permission_set_name") or "").strip() or None
