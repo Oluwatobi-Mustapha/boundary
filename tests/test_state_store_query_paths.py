@@ -35,10 +35,14 @@ class _FakeDynamo:
 
 
 def _build_store(monkeypatch):
+    # Import the module first so monkeypatch can find it
+    from adapters import state_store
+    
     table = _FakeTable()
     monkeypatch.setattr(
-        "adapters.state_store.boto3.resource",
-        lambda _service_name, region_name=None: _FakeDynamo(table),
+        state_store,
+        "boto3",
+        type('obj', (object,), {'resource': lambda _service_name, region_name=None: _FakeDynamo(table)})()
     )
     return StateStore("boundary-dev-active-requests"), table
 
