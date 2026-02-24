@@ -26,7 +26,7 @@ class _FakeTable:
             "DENIED": 1,
             "ERROR": 0,
         }
-        return {"Count": counts.get(status, 0), "Items": [], "LastEvaluatedKey": None}
+        return {"Count": counts.get(status, 0), "Items": []}
 
 
 class _FakeStateStore:
