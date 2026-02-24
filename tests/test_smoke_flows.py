@@ -21,11 +21,11 @@ sys.path.insert(0, SRC)
 os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
 os.environ.setdefault("AWS_EC2_METADATA_DISABLED", "true")
 
-from src.core.engine import PolicyEngine
-from src.models.aws_context import AWSAccountContext
-from src.workflows.access_workflow import SlackWorkflow
-from src import janitor
-from src.models.request_states import STATE_DENIED
+from core.engine import PolicyEngine
+from models.aws_context import AWSAccountContext
+from workflows.access_workflow import SlackWorkflow
+import janitor
+from models.request_states import STATE_DENIED
 
 
 REQUESTER_SLACK_ID = "UREQUESTER1"
