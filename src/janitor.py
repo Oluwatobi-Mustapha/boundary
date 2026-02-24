@@ -29,6 +29,11 @@ if not logger.handlers:
     logger.addHandler(console_handler)
 # -----------------------------
 
+def notify_revocation(slack_user_id: str, item: dict) -> None:
+    """Send a notification that access has been revoked."""
+    logger.info(f"Notifying {slack_user_id} about revocation of request {item.get('request_id')}")
+
+
 def run_revocation_loop(table_name: str, dry_run: bool = False):
     """
     Core logic separated from the entry point so it can be called by CLI or Lambda.
@@ -79,6 +84,12 @@ def run_revocation_loop(table_name: str, dry_run: bool = False):
 
             # B. Update DB Status
             state_store.update_status(req_id, "REVOKED")
+
+            # C. Notify the user
+            slack_user_id = item.get("slack_user_id")
+            if slack_user_id:
+                notify_revocation(slack_user_id, item)
+
             logger.info(f"✅ Successfully revoked {req_id}")
             revocation_count += 1
 
