@@ -8,8 +8,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "scripts" / "dashboard_proxy.py"
 
 spec = importlib.util.spec_from_file_location("dashboard_proxy", MODULE_PATH)
+assert spec is not None, f"Could not find module at {MODULE_PATH}"
+assert spec.loader is not None, f"Module spec at {MODULE_PATH} has no loader"
 dashboard_proxy = importlib.util.module_from_spec(spec)
-assert spec.loader is not None
 spec.loader.exec_module(dashboard_proxy)
 
 
