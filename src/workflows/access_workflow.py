@@ -7,7 +7,7 @@ import time
 import os
 import uuid
 import boto3
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 from adapters.slack_adapter import SlackAdapter, SlackAPIError
 from adapters.identity_store_adapter import IdentityStoreAdapter, IdentityStoreError
