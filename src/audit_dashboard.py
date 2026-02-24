@@ -1,4 +1,5 @@
 import html
+import json
 import os
 import time
 from collections import Counter
@@ -566,7 +567,7 @@ def _render_request_detail(scope, item: Dict[str, Any], filters: Dict[str, Any])
     revoked = _escape(item.get("revoked_at") or "-")
     ticket = _escape(item.get("ticket_id") or "-")
     back_href = _escape(_with_query("/dashboard", filters))
-    raw_json = _escape(item)
+    raw_json = html.escape(json.dumps(item, indent=2, default=str))
 
     return f"""<!doctype html>
 <html lang="en">
