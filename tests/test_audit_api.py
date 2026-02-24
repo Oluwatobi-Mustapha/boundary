@@ -6,10 +6,9 @@ from decimal import Decimal
 import pytest
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-SRC = os.path.join(ROOT, "src")
-sys.path.insert(0, SRC)
+sys.path.insert(0, ROOT)
 
-import audit_api
+from src import audit_api
 
 
 class _FakeTable:

@@ -14,18 +14,17 @@ import pytest
 
 # Ensure imports resolve like the Lambda package layout.
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-SRC = os.path.join(ROOT, "src")
-sys.path.insert(0, SRC)
+sys.path.insert(0, ROOT)
 
 # Prevent boto3 from trying EC2 metadata in local test runs.
 os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
 os.environ.setdefault("AWS_EC2_METADATA_DISABLED", "true")
 
-from core.engine import PolicyEngine
-from models.aws_context import AWSAccountContext
-from workflows.access_workflow import SlackWorkflow
-import janitor
-from models.request_states import STATE_DENIED
+from src.core.engine import PolicyEngine
+from src.models.aws_context import AWSAccountContext
+from src.workflows.access_workflow import SlackWorkflow
+from src import janitor
+from src.models.request_states import STATE_DENIED
 
 
 REQUESTER_SLACK_ID = "UREQUESTER1"
