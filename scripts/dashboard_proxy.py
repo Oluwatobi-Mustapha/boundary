@@ -149,12 +149,10 @@ def main() -> None:
     credentials = session.get_credentials()
     if credentials is None:
         raise RuntimeError("No AWS credentials found. Authenticate first (AWS CLI/SSO).")
-    frozen = credentials.get_frozen_credentials()
-
     _SignedProxyHandler.api_root = api_root
     _SignedProxyHandler.default_path = default_path
     _SignedProxyHandler.region = region
-    _SignedProxyHandler.credentials = frozen
+    _SignedProxyHandler.credentials = credentials
     _SignedProxyHandler.ssl_context = _build_ssl_context()
 
     server = ThreadingHTTPServer((args.bind, args.port), _SignedProxyHandler)
