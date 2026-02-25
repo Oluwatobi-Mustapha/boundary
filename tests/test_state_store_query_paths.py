@@ -4,6 +4,7 @@ Unit tests for Step 3 query paths (DynamoDB GSI-backed reads).
 import importlib
 import os
 import sys
+from decimal import Decimal
 
 import pytest
 
@@ -32,12 +33,14 @@ if not hasattr(_boto3_check, "__file__"):
     importlib.invalidate_caches()
 
 from adapters.state_store import StateStore  # noqa: E402
+from models.request import AccessRequest  # noqa: E402
 from models.request_states import STATE_PENDING_APPROVAL  # noqa: E402
 
 
 class _FakeTable:
     def __init__(self):
         self.query_calls = []
+        self.put_item_calls = []
 
     def query(self, **kwargs):
         self.query_calls.append(kwargs)
@@ -45,6 +48,10 @@ class _FakeTable:
             "Items": [{"request_id": "req-1"}],
             "LastEvaluatedKey": {"request_id": "req-1"},
         }
+
+    def put_item(self, **kwargs):
+        self.put_item_calls.append(kwargs)
+        return {}
 
 
 class _FakeDynamo:
@@ -149,3 +156,31 @@ def test_invalid_query_inputs_raise(monkeypatch):
 
     with pytest.raises(ValueError, match="limit must be greater than 0"):
         store.list_requests_by_permission_set("PowerUserAccess", limit=0)
+
+
+def test_save_request_converts_float_fields_to_decimal(monkeypatch):
+    store, table = _build_store(monkeypatch)
+    req = AccessRequest(
+        request_id="req-float-1",
+        principal_id="user-1",
+        principal_type="USER",
+        permission_set_arn="arn:aws:sso:::permissionSet/ssoins-123/ps-123",
+        permission_set_name="ReadOnlyAccess",
+        account_id="123456789012",
+        instance_arn="arn:aws:sso:::instance/ssoins-123",
+        rule_id="rule-1",
+        requested_at=1700000000.1,
+        created_at=1700000000.2,
+        updated_at=1700000000.3,
+        expires_at=1700003600.4,
+        evaluated_at=1700000000.5,
+    )
+
+    store.save_request(req)
+
+    item = table.put_item_calls[-1]["Item"]
+    assert isinstance(item["requested_at"], Decimal)
+    assert isinstance(item["created_at"], Decimal)
+    assert isinstance(item["updated_at"], Decimal)
+    assert isinstance(item["expires_at"], Decimal)
+    assert isinstance(item["evaluated_at"], Decimal)

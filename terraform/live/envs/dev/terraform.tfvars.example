@@ -78,6 +78,8 @@ permission_sets = {
 # - AWS_SSO_START_URL powers the "Click Here to Login" button in Slack success messages.
 #   Example: https://d-1234567890.awsapps.com/start
 # - AUDIT_API_PRINCIPAL_MAP configures RBAC + ABAC scopes for the read-only audit API.
+# - AUDIT_API_ALLOW_WILDCARD_PRINCIPAL_MAP is optional bootstrap mode.
+#   Keep it unset/false in normal operation and map explicit caller ARNs instead.
 #
 # Note:
 # - BOUNDARY_DEVELOPERS_ID / BOUNDARY_SECURITY_ADMINS_ID / BOUNDARY_AUDITORS_ID
@@ -88,6 +90,7 @@ boundary_secrets = {
   PROD_OU_ID        = "ou-xxxx-zzzzzzzz"
   AWS_SSO_START_URL = "https://d-1234567890.awsapps.com/start"
   LOG_LEVEL         = "INFO"
+  # AUDIT_API_ALLOW_WILDCARD_PRINCIPAL_MAP = "false"
   AUDIT_API_PRINCIPAL_MAP = <<JSON
 {
   "arn:aws:iam::123456789012:role/BoundarySecurityAdminApiRole": {

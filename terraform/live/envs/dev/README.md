@@ -111,6 +111,8 @@ Important:
 - These routes use `AWS_IAM` auth at API Gateway (authenticated callers only).
 - App-level RBAC + ABAC is enforced via `boundary_secrets.AUDIT_API_PRINCIPAL_MAP`.
 - Deny-by-default: if a caller ARN is not mapped, access is rejected.
+- Wildcard caller mapping (`"*"` key) is disabled by default. Enable only for short bootstrap windows with:
+  `boundary_secrets.AUDIT_API_ALLOW_WILDCARD_PRINCIPAL_MAP = "true"`
 
 Minimum query filter for `/api/requests` and `/api/exports.csv`:
 
@@ -120,12 +122,32 @@ Optional filters:
 
 - `created_after`, `created_before`, `page_size`, `next_token`
 
+### Role Matrix Smoke Check
+
+Run the required v1 role-matrix smoke test:
+
+```bash
+scripts/smoke_audit_role_matrix.sh
+```
+
+If Terraform outputs are not readable in your current credentials, pass endpoints directly:
+
+```bash
+scripts/smoke_audit_role_matrix.sh \
+  --api-base "https://<api-id>.execute-api.us-east-1.amazonaws.com/api" \
+  --dashboard-url "https://<api-id>.execute-api.us-east-1.amazonaws.com/dashboard"
+```
+
 ---
 
 ## Audit Dashboard (Step 5)
 
 After apply, Terraform outputs `audit_dashboard_url`.
-Terraform also outputs `audit_read_invoke_policy_arn`.
+Terraform also outputs per-role invoke policies:
+
+- `audit_security_admin_invoke_policy_arn`
+- `audit_auditor_invoke_policy_arn`
+- `audit_viewer_invoke_policy_arn`
 
 Dashboard routes:
 
@@ -145,7 +167,14 @@ Important:
 - These routes also use `AWS_IAM` auth at API Gateway.
 - App-level RBAC + ABAC is enforced with the same `AUDIT_API_PRINCIPAL_MAP`.
 - If caller ARN is unmapped, dashboard access is denied.
-- Attach `audit_read_invoke_policy_arn` to the IAM roles/users that should open the API/dashboard.
+- Attach the matching role policy:
+  - `security_admin` callers -> `audit_security_admin_invoke_policy_arn`
+  - `auditor` callers -> `audit_auditor_invoke_policy_arn`
+  - `viewer` callers -> `audit_viewer_invoke_policy_arn` (no metrics/export route invoke)
+
+Compatibility output:
+
+- `audit_read_invoke_policy_arn` is still exported as a broad legacy policy.
 
 ### Open Dashboard in Browser (recommended)
 

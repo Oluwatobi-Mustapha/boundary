@@ -25,8 +25,32 @@ output "audit_dashboard_url" {
 }
 
 output "audit_read_invoke_policy_arn" {
-  description = "Attach this managed policy to IAM caller roles that should access audit API/dashboard"
+  description = "Legacy broad policy for audit API/dashboard callers (kept for compatibility)"
   value       = aws_iam_policy.audit_read_invoke.arn
+}
+
+output "audit_security_admin_invoke_policy_arn" {
+  description = "Attach to security_admin caller role(s): requests + metrics + exports + dashboard"
+  value       = aws_iam_policy.audit_read_invoke_full.arn
+}
+
+output "audit_auditor_invoke_policy_arn" {
+  description = "Attach to auditor caller role(s): read-only requests + metrics + exports + dashboard (shares policy with security_admin)"
+  value       = aws_iam_policy.audit_read_invoke_full.arn
+}
+
+output "audit_viewer_invoke_policy_arn" {
+  description = "Attach to viewer caller role(s): requests + dashboard only"
+  value       = aws_iam_policy.audit_read_invoke_viewer.arn
+}
+
+output "audit_invoke_policy_arns_by_role" {
+  description = "Role-keyed invoke policy ARNs for security_admin, auditor, and viewer"
+  value = {
+    security_admin = aws_iam_policy.audit_read_invoke_full.arn
+    auditor        = aws_iam_policy.audit_read_invoke_full.arn
+    viewer         = aws_iam_policy.audit_read_invoke_viewer.arn
+  }
 }
 
 # NOTE: Once applied, go to the AWS Console -> Amazon SNS -> Topics. 

@@ -11,6 +11,12 @@ from decimal import Decimal
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from adapters.state_store import StateStore
+from contracts import (
+    API_LIST_RESPONSE_KEYS,
+    API_METRICS_RESPONSE_KEYS,
+    CONTRACT_VERSION,
+    CSV_EXPORT_COLUMNS,
+)
 from models.request_states import (
     STATE_ACTIVE,
     STATE_APPROVED,
@@ -51,7 +57,10 @@ class PrincipalScope:
 
 
 def _response(status_code: int, body: Any, headers: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
-    out_headers = {"Content-Type": "application/json"}
+    out_headers = {
+        "Content-Type": "application/json",
+        "X-Boundary-Contract-Version": CONTRACT_VERSION,
+    }
     if headers:
         out_headers.update(headers)
     return {
@@ -67,6 +76,7 @@ def _csv_response(filename: str, content: str) -> Dict[str, Any]:
         "headers": {
             "Content-Type": "text/csv",
             "Content-Disposition": f'attachment; filename="{filename}"',
+            "X-Boundary-Contract-Version": CONTRACT_VERSION,
         },
         "body": content,
     }
@@ -138,6 +148,13 @@ def _parse_scopes_map(raw: str) -> Dict[str, Dict[str, Any]]:
     if not isinstance(parsed, dict):
         raise ValueError("AUDIT_API_PRINCIPAL_MAP must be a JSON object")
     return parsed
+
+
+def _is_truthy_env(var_name: str, *, default: bool = False) -> bool:
+    raw = os.environ.get(var_name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _as_scope_set(values: Any, *, normalize_status: bool = False) -> Set[str]:
@@ -224,9 +241,19 @@ def _build_scope(event: Dict[str, Any]) -> PrincipalScope:
         if principal_cfg is not None:
             break
 
-    # Optional wildcard fallback for controlled bootstrap.
+    # Optional wildcard fallback for short-lived bootstrap only.
     if principal_cfg is None and WILDCARD in scopes_map:
-        principal_cfg = scopes_map[WILDCARD]
+        if _is_truthy_env("AUDIT_API_ALLOW_WILDCARD_PRINCIPAL_MAP", default=False):
+            principal_cfg = scopes_map[WILDCARD]
+            logger.warning(
+                "Using wildcard principal mapping for audit API. "
+                "Map explicit caller ARNs and disable this bootstrap mode."
+            )
+        else:
+            raise PermissionError(
+                "Wildcard principal mapping is disabled. "
+                "Map the caller ARN explicitly in AUDIT_API_PRINCIPAL_MAP."
+            )
 
     if principal_cfg is None:
         raise PermissionError(
@@ -473,15 +500,15 @@ def _handle_get_requests(store: StateStore, scope: PrincipalScope, event: Dict[s
             continue
         items.append(item)
 
-    return _response(
-        200,
-        {
-            "items": items,
-            "next_token": _encode_next_token(data.get("next_key")),
-            "count": len(items),
-            "generated_at": int(time.time()),
-        },
-    )
+    body = {
+        "items": items,
+        "next_token": _encode_next_token(data.get("next_key")),
+        "count": len(items),
+        "generated_at": int(time.time()),
+    }
+    # Defensive guard to keep response shape stable across refactors.
+    body = {k: body[k] for k in API_LIST_RESPONSE_KEYS}
+    return _response(200, body)
 
 
 def _handle_get_request_by_id(store: StateStore, scope: PrincipalScope, request_id: str) -> Dict[str, Any]:
@@ -524,6 +551,7 @@ def _handle_get_metrics(store: StateStore, scope: PrincipalScope, event: Dict[st
         "created_before": created_before,
         "generated_at": int(time.time()),
     }
+    body = {k: body[k] for k in API_METRICS_RESPONSE_KEYS}
     return _response(200, body)
 
 
@@ -562,24 +590,7 @@ def _handle_export_csv(store: StateStore, scope: PrincipalScope, event: Dict[str
     rows = _iter_requests_for_export(store, scope, filters, max_rows=max_rows)
     output = io.StringIO()
     writer = csv.writer(output)
-    writer.writerow(
-        [
-            "request_id",
-            "status",
-            "created_at",
-            "updated_at",
-            "requested_at",
-            "expires_at",
-            "revoked_at",
-            "account_id",
-            "permission_set_name",
-            "requester_slack_user_id",
-            "approver_slack_user_id",
-            "rule_id",
-            "reason",
-            "ticket_id",
-        ]
-    )
+    writer.writerow(CSV_EXPORT_COLUMNS)
     for row in rows:
         writer.writerow(
             [
