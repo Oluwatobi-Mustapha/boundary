@@ -145,7 +145,7 @@ class StateStore:
         if request.engine_version:
             item["engine_version"] = request.engine_version
         if request.evaluated_at:
-            item["evaluated_at"] = request.evaluated_at
+            item["evaluated_at"] = self._float_to_decimal(request.evaluated_at)
         if request.revoked_at is not None:
             item["revoked_at"] = self._float_to_decimal(request.revoked_at)
 
