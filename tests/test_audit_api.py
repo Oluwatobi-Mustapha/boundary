@@ -99,6 +99,43 @@ def test_deny_when_principal_not_mapped(monkeypatch):
     assert "Principal not mapped" in body["error"]
 
 
+def test_wildcard_principal_mapping_disabled_by_default(monkeypatch):
+    _set_map(
+        monkeypatch,
+        {
+            "*": {
+                "roles": ["viewer"],
+                "accounts": ["*"],
+                "requesters": ["*"],
+                "permission_sets": ["*"],
+                "statuses": ["*"],
+            }
+        },
+    )
+    resp = audit_api.lambda_handler(_event("/api/requests", query={"status": "ACTIVE"}), None)
+    body = json.loads(resp["body"])
+    assert resp["statusCode"] == 403
+    assert "Wildcard principal mapping is disabled" in body["error"]
+
+
+def test_wildcard_principal_mapping_can_be_enabled_for_bootstrap(monkeypatch):
+    monkeypatch.setenv("AUDIT_API_ALLOW_WILDCARD_PRINCIPAL_MAP", "true")
+    _set_map(
+        monkeypatch,
+        {
+            "*": {
+                "roles": ["auditor"],
+                "accounts": ["*"],
+                "requesters": ["*"],
+                "permission_sets": ["*"],
+                "statuses": ["*"],
+            }
+        },
+    )
+    resp = audit_api.lambda_handler(_event("/api/metrics"), None)
+    assert resp["statusCode"] == 200
+
+
 def test_list_requests_with_rbac_and_abac(monkeypatch):
     _set_map(
         monkeypatch,

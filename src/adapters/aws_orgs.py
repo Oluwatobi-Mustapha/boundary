@@ -1,7 +1,7 @@
 import boto3
 import logging
 from typing import List, Dict
-from src.models.aws_context import AWSAccountContext
+from models.aws_context import AWSAccountContext
 from botocore.exceptions import ClientError
 
 class AWSResourceNotFoundError(Exception):

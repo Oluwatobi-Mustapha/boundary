@@ -138,3 +138,76 @@ resource "aws_iam_policy" "audit_read_invoke" {
     ]
   })
 }
+
+# ------------------------------------------------------------------------------
+# LEAST-PRIVILEGE CALLER POLICIES (recommended)
+# ------------------------------------------------------------------------------
+resource "aws_iam_policy" "audit_read_invoke_security_admin" {
+  name        = "boundary-${var.environment}-audit-security-admin-invoke"
+  description = "Invoke policy for security admin audit callers (full read API + dashboard)"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "SecurityAdminAuditInvoke"
+        Effect = "Allow"
+        Action = ["execute-api:Invoke"]
+        Resource = [
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/api/requests",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/api/requests/*",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/api/metrics",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/api/exports.csv",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/dashboard",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/dashboard/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "audit_read_invoke_auditor" {
+  name        = "boundary-${var.environment}-audit-auditor-invoke"
+  description = "Invoke policy for auditor audit callers (full read API + dashboard)"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AuditorAuditInvoke"
+        Effect = "Allow"
+        Action = ["execute-api:Invoke"]
+        Resource = [
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/api/requests",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/api/requests/*",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/api/metrics",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/api/exports.csv",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/dashboard",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/dashboard/*"
+        ]
+      }
+    ]
+  })
+}
+
+resource "aws_iam_policy" "audit_read_invoke_viewer" {
+  name        = "boundary-${var.environment}-audit-viewer-invoke"
+  description = "Invoke policy for viewer audit callers (requests + dashboard only)"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ViewerAuditInvoke"
+        Effect = "Allow"
+        Action = ["execute-api:Invoke"]
+        Resource = [
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/api/requests",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/api/requests/*",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/dashboard",
+          "${aws_apigatewayv2_api.slack_api.execution_arn}/*/GET/dashboard/*"
+        ]
+      }
+    ]
+  })
+}
