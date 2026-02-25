@@ -166,7 +166,6 @@ python3 scripts/dashboard_proxy.py \
 pytest -q
 terraform -chdir=terraform/live/envs/dev validate
 terraform fmt -check -recursive terraform
-scripts/smoke_audit_role_matrix.sh
 ```
 
 ## Operations
