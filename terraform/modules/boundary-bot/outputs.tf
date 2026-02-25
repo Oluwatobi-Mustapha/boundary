@@ -35,7 +35,7 @@ output "audit_security_admin_invoke_policy_arn" {
 }
 
 output "audit_auditor_invoke_policy_arn" {
-  description = "Attach to auditor caller role(s): requests + metrics + exports + dashboard"
+  description = "Attach to auditor caller role(s): read-only requests + metrics + exports + dashboard"
   value       = aws_iam_policy.audit_read_invoke_auditor.arn
 }
 
