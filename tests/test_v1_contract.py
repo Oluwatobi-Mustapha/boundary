@@ -174,4 +174,5 @@ def test_v1_error_shape_is_frozen():
     resp = audit_api.lambda_handler(_event("/api/nope"), None)
     body = json.loads(resp["body"])
     assert resp["statusCode"] == 404
+    assert resp["headers"]["X-Boundary-Contract-Version"] == CONTRACT_VERSION
     assert tuple(body.keys()) == ("error",)
