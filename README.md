@@ -160,9 +160,6 @@ python3 scripts/dashboard_proxy.py \
 - Read APIs are authenticated and scope-filtered (RBAC + ABAC)
 - Contract header/version enforced for read API responses
 
-See:
-- `docs/v1_contract.md`
-
 ## Validation and Smoke Tests
 
 ```bash
