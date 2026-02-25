@@ -185,14 +185,3 @@ terraform fmt -check -recursive terraform
 Key alarms:
 - `boundary-dev-janitor-errors`
 - `boundary-dev-janitor-slack-notify-failures`
-
-Quick checks:
-
-```bash
-aws cloudwatch describe-alarms \
-  --alarm-names boundary-dev-janitor-errors boundary-dev-janitor-slack-notify-failures \
-  --query 'MetricAlarms[*].[AlarmName,StateValue]' --output table
-
-aws logs tail /aws/lambda/boundary-workflow-manager-dev --since 20m --format short
-aws logs tail /aws/lambda/boundary-dev-janitor --since 20m --format short
-```
