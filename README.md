@@ -63,9 +63,9 @@ cp terraform/live/envs/dev/terraform.tfvars.example terraform/live/envs/dev/terr
 3. Apply:
    
 Navigate to the environment directory
-``
+```
 cd terraform/live/envs/dev
-``
+```
 Run Terraform workflow
 ```
 terraform init
