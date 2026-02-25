@@ -61,10 +61,20 @@ cp terraform/live/envs/dev/terraform.tfvars.example terraform/live/envs/dev/terr
 - `boundary_secrets.AUDIT_API_PRINCIPAL_MAP` (explicit caller ARNs)
 
 3. Apply:
-```bash
-terraform -chdir=terraform/live/envs/dev init
-terraform -chdir=terraform/live/envs/dev plan -out=tfplan
-terraform -chdir=terraform/live/envs/dev apply tfplan
+   
+Navigate to the environment directory
+```
+cd terraform/live/envs/dev
+```
+Run Terraform workflow
+```
+terraform init
+terraform plan -out=tfplan
+terraform apply tfplan
+```
+Return to the previous directory
+```
+cd -
 ```
 
 4. Useful outputs:
@@ -128,6 +138,7 @@ Endpoints:
 - `GET /api/exports.csv`
 
 Notes:
+
 - API Gateway auth is `AWS_IAM`
 - App-level RBAC/ABAC is enforced using `AUDIT_API_PRINCIPAL_MAP`
 - Deny-by-default for unmapped principals
@@ -144,6 +155,7 @@ Routes:
 - `GET /dashboard/requests/{request_id}`
 
 For browser use (SigV4 proxy):
+
 ```bash
 python3 scripts/dashboard_proxy.py \
   --dashboard-url "$(terraform -chdir=terraform/live/envs/dev output -raw audit_dashboard_url)" \
@@ -175,6 +187,7 @@ Key alarms:
 - `boundary-dev-janitor-slack-notify-failures`
 
 Quick checks:
+
 ```bash
 aws cloudwatch describe-alarms \
   --alarm-names boundary-dev-janitor-errors boundary-dev-janitor-slack-notify-failures \
@@ -183,7 +196,3 @@ aws cloudwatch describe-alarms \
 aws logs tail /aws/lambda/boundary-workflow-manager-dev --since 20m --format short
 aws logs tail /aws/lambda/boundary-dev-janitor --since 20m --format short
 ```
-
-## Release Reference
-
-- `changelog/1_change.md`
