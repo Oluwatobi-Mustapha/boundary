@@ -186,5 +186,4 @@ aws logs tail /aws/lambda/boundary-dev-janitor --since 20m --format short
 
 ## Release Reference
 
-- `docs/v1_release_checklist.md`
 - `changelog/1_change.md`
