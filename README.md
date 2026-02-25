@@ -95,9 +95,9 @@ terraform -chdir=terraform/live/envs/dev output -json
 Accepted forms:
 
 ```text
-/boundary 512539654006 ReadOnlyAccess 0.5
-/boundary request 220065406396 AdministratorAccess 0.5 INC-12345
-/boundary 220065406396 AdministratorAccess 0.5 ticket INC-12345
+/boundary 123456789012 ReadOnlyAccess 0.5
+/boundary request 111122223333 AdministratorAccess 0.5 INC-12345
+/boundary 111122223333 AdministratorAccess 0.5 ticket INC-12345
 ```
 
 ## CLI Usage
