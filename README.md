@@ -4,7 +4,6 @@ Boundary is an AWS-focused, policy-driven JIT access broker.
 It grants short-lived IAM Identity Center access from Slack, enforces approval for high-risk requests, revokes expired grants automatically, and exposes read-only audit views.
 
 `[ 🎥 Placeholder: 60-second Demo Video ]`  
-`[ 📸 Placeholder: High-Level Architecture Diagram ]`
 
 
 - [Quick Start Guide](README_QUICKSTART.md)
