@@ -1,214 +1,211 @@
 # Boundary
 
-> **Serverless Just-In-Time (JIT) access broker for AWS.**  
-> Slack-native ChatOps, deterministic policy-as-code, and automated zero-trust revocation for IAM Identity Center.
+Boundary is an AWS-focused, policy-driven JIT access broker.  
+It grants short-lived IAM Identity Center access from Slack, enforces approval for high-risk requests, revokes expired grants automatically, and exposes read-only audit views.
 
-Boundary eliminates standing privileges in AWS environments.  
-Developers request short-lived IAM Identity Center access directly from Slack.  
-Requests are evaluated against a deterministic YAML policy, provisioned automatically, and revoked when their TTL expires — with no manual cleanup required.
+`[ 🎥 Placeholder: 60-second Demo Video ]`  
+`[ 📸 Placeholder: High-Level Architecture Diagram ]`
 
-`[ 🎥 60-second Demo Video ]`  
-`[ 📸 Hero Image: Slack "Access Granted" Block with Login Button ]`
 
----
-
-## Why Boundary?
-
-Standing access is the #1 identity risk in cloud environments.  
-Boundary enforces:
-
-- **Default Deny**
-- **Time-bound access**
-- **Deterministic evaluation**
-- **Automated revocation**
-- **Full audit traceability**
-
-No permanent roles. No forgotten access. No spreadsheet tracking.
+- [Quick Start Guide](README_QUICKSTART.md)
 
 ---
 
-## Key Features
+## Status
 
-- **Slack-Native ChatOps**  
-  End-to-end request, approval, provisioning, and notification via `/boundary`.
-
-- **Deterministic Policy-as-Code**  
-  Rules defined in `config/access_rules.yaml`.  
-  Supports attribute-based controls (Tags, OUs) and strict duration capping.
-
-- **Human-in-the-Loop Approvals**  
-  Optional Slack approval workflow for high-risk roles (e.g., `AdministratorAccess`).
-
-- **The Janitor Service**  
-  EventBridge-driven automated revocation guarantees expired access is removed.
-
-- **Audit-Ready by Design**  
-  Every evaluation emits a structured JSON artifact and persists state in DynamoDB.  
-  Includes a SigV4-authenticated read-only Audit API and dashboard.
+- `v1` pilot-ready  
+- AWS-only scope  
+- Primary user interface: Slack  
 
 ---
 
-## Architecture
+## What Boundary Does
 
-`[ 📸 High-Level Architecture Diagram ]`
-
-1. **Request**  
-   Slack slash command → API Gateway (`POST /webhook`).
-
-2. **Ingest**  
-   `slack_bot` verifies Slack HMAC signature and enqueues the request into SQS.
-
-3. **Evaluate & Provision**  
-   `workflow_manager`:
-   - Resolves Identity Store GUID  
-   - Evaluates deterministic YAML policy  
-   - Provisions IAM Identity Center account assignment  
-   - Persists request state in DynamoDB  
-
-4. **Revoke**  
-   `janitor` (EventBridge cron) queries a DynamoDB GSI (Global Secondary Index)  
-   for expired `ACTIVE` requests and revokes them.
-
-5. **Audit**  
-   `audit_api` and `dashboard` read from DynamoDB.  
-   Protected by IAM SigV4 authentication and application-level RBAC/ABAC.
+- Evaluates access requests against `config/access_rules.yaml`
+- Provisions IAM Identity Center account assignments when allowed
+- Supports approval workflow for sensitive permissions
+- Revokes expired access on schedule (Janitor)
+- Stores request lifecycle and audit evidence in DynamoDB
+- Exposes read-only Audit API and Dashboard
 
 ---
 
-## Security Model
+## Interfaces
 
-Boundary is designed for enterprise security teams.
+1. **Slack (`/boundary`)**  
+   End-user request, approval, and notification flow.
 
-- **Fail-Closed Evaluation**  
-  Unmapped principals are denied by default.
+2. **CLI (`src/main.py`, `src/janitor.py`, `demo.py`)**  
+   Operator testing and local workflow validation.
 
-- **Deterministic Rule Ordering**  
-  Policy evaluation follows strict YAML sequence — no ambiguity.
-
-- **Zero Standing Privileges**  
-  All access is time-bound and automatically revoked.
-
-- **Tamper-Resistant APIs**  
-  SigV4 authentication + scope-filtered reads.  
-  Versioned contract headers enforce API compatibility.
-
-- **Least Privilege Infrastructure**  
-  Terraform-managed deployment with narrowly scoped IAM execution roles.
+3. **Web Dashboard (`/dashboard`)**  
+   Read-only audit visibility.
 
 ---
 
-# Quick Start
+## Architecture (High Level)
+
+`[ 📸 Placeholder: Detailed Architecture Diagram (API Gateway → SQS → Lambdas → DynamoDB → EventBridge) ]`
+
+1. Slack slash command hits API Gateway `POST /webhook`
+2. `slack_bot` verifies Slack signature and enqueues request in SQS
+3. `workflow_manager`:
+   - resolves user/group identity
+   - evaluates policy engine
+   - provisions assignment (or marks pending approval/deny)
+   - persists request state in DynamoDB
+4. `janitor` (EventBridge schedule) revokes expired `ACTIVE` requests
+5. `audit_api` and `audit_dashboard` read from DynamoDB with IAM auth + app RBAC/ABAC
+
+---
 
 ## Prerequisites
 
 - AWS Organization + IAM Identity Center enabled
-- Slack App (Slash command + Interactivity)
-  - Required scopes:
-    - `chat:write`
-    - `im:write`
-    - `users:read`
-    - `users:read.email`
+- Slack app (slash command + interactivity)
 - Terraform 1.6+
 - Python 3.11+
+- AWS CLI authenticated to the target account/region
 
 ---
 
-## 1. Configuration
+## Deploy (Dev)
 
-Copy the variables template:
+### 1. Copy vars template
 
 ```bash
 cp terraform/live/envs/dev/terraform.tfvars.example terraform/live/envs/dev/terraform.tfvars
 ```
 
-Edit `terraform.tfvars` and define:
+### 2. Set required values in `terraform/live/envs/dev/terraform.tfvars`
 
-- Organizational Units (OUs)
-- IAM Identity Center Start URL
-- Audit principals
+- `boundary_secrets.STAGING_OU_ID`
+- `boundary_secrets.PROD_OU_ID`
+- `boundary_secrets.AWS_SSO_START_URL`
+- `boundary_secrets.AUDIT_API_PRINCIPAL_MAP` (explicit caller ARNs)
 
----
+### 3. Apply
 
-## 2. Deploy
+Navigate to environment directory:
 
 ```bash
 cd terraform/live/envs/dev
+```
+
+Run Terraform workflow:
+
+```bash
 terraform init
 terraform plan -out=tfplan
 terraform apply tfplan
 ```
 
-Retrieve generated outputs:
+Return to previous directory:
 
 ```bash
-terraform output -json
+cd -
 ```
 
-Outputs include:
+### 4. Useful outputs
 
-- `slack_webhook_url`
-- `audit_dashboard_url`
-- Environment-specific endpoints
+```bash
+terraform -chdir=terraform/live/envs/dev output -json
+```
 
 ---
 
-## 3. Slack Integration
+## Slack Setup
 
-Configure your Slack App:
+- Slash command Request URL → Terraform output `slack_webhook_url`
+- Interactivity Request URL → same `/webhook` endpoint
 
-- **Slash Command URL** → `slack_webhook_url`
-- **Interactivity & Shortcuts URL** → `slack_webhook_url`
+Required scopes:
+- `chat:write`
+- `im:write`
+- `users:read`
+- `users:read.email`
 
-Invite the bot to your approval channel:
+Invite app to approval channel:
 
-```plaintext
+```text
 /invite @Boundary JIT
 ```
 
 ---
 
-# Usage
+## Slack Request Syntax
 
-## Slack Command Syntax
-
-```plaintext
+```text
 /boundary <AccountID> <PermissionSet> <Hours> [TicketID]
 ```
 
-## Examples
+Accepted forms:
 
-```plaintext
+```text
 /boundary 123456789012 ReadOnlyAccess 0.5
-/boundary 111122223333 AdministratorAccess 2 INC-12345
+/boundary request 111122223333 AdministratorAccess 0.5 INC-12345
+/boundary 111122223333 AdministratorAccess 0.5 ticket INC-12345
 ```
-
-📸 *Placeholder: CLI Audit Table Screenshot*
 
 ---
 
-## CLI & Local Testing
+## CLI Usage
 
-### Local Policy Evaluation (No AWS Writes)
+### Local demo (no live AWS writes)
 
 ```bash
 PYTHONPATH=src python3 demo.py --debug
 ```
 
-### Manually Trigger Janitor
+### Live request path (operator testing)
 
 ```bash
-python3 src/janitor.py --dynamo-table <table_name>
+python3 src/main.py --help
+```
+
+### Janitor path
+
+```bash
+python3 src/janitor.py --help
 ```
 
 ---
 
-## Audit API & Dashboard
+## Audit API
 
-📸 *Placeholder: Web Dashboard Screenshot*
+Base URL from Terraform output `audit_api_base_url`.
 
-Boundary exposes a read-only audit dashboard for security teams.
+Endpoints:
 
-Access locally via SigV4 proxy:
+- `GET /api/requests`
+- `GET /api/requests/{request_id}`
+- `GET /api/metrics`
+- `GET /api/exports.csv`
+
+Notes:
+
+- API Gateway auth is `AWS_IAM`
+- App-level RBAC/ABAC enforced via `AUDIT_API_PRINCIPAL_MAP`
+- Deny-by-default for unmapped principals
+- Wildcard principal mapping disabled unless explicitly enabled
+- `/api/requests` and `/api/exports.csv` require one primary filter:
+  - `status`
+  - `account_id`
+  - `permission_set_name`
+  - `requester_slack_user_id`
+
+---
+
+## Audit Dashboard
+
+Base URL from Terraform output `audit_dashboard_url`.
+
+Routes:
+
+- `GET /dashboard`
+- `GET /dashboard/requests/{request_id}`
+
+For browser use (SigV4 proxy):
 
 ```bash
 python3 scripts/dashboard_proxy.py \
@@ -218,20 +215,31 @@ python3 scripts/dashboard_proxy.py \
 
 ---
 
-## Operations & Testing
+## Security Model
 
-### Validation
+- Fail-closed default deny
+- Deterministic rule evaluation (ordered by YAML sequence)
+- Ticket + human approval supported for sensitive roles
+- Auto-revocation via scheduled janitor
+- Canonicalized and validated request lifecycle states
+- Read APIs authenticated and scope-filtered (RBAC + ABAC)
+- Contract header/version enforced for API responses
+
+---
+
+## Validation and Smoke Tests
 
 ```bash
 pytest -q
 terraform -chdir=terraform/live/envs/dev validate
+terraform fmt -check -recursive terraform
 ```
 
-### Built-In CloudWatch Alarms
+---
 
-Provisioned automatically:
+## Operations
+
+Key alarms:
 
 - `boundary-dev-janitor-errors`
 - `boundary-dev-janitor-slack-notify-failures`
-
-These monitor revocation failures and Slack notification delivery errors.
