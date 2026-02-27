@@ -23,7 +23,7 @@ from models.request_states import (
     STATE_PENDING_APPROVAL,
     canonicalize_status,
 )
-from validators import validate_duration, validate_account_id
+from validators import validate_duration, validate_account_id, validate_request_id
 
 logger = logging.getLogger(__name__)
 
@@ -277,6 +277,12 @@ class SlackWorkflow:
         command_text = event.get('command_text', '')
         response_url = event.get('response_url')
         explicit_request_id = event.get('request_id')
+        if explicit_request_id is not None:
+            try:
+                validate_request_id(explicit_request_id)
+            except ValueError as e:
+                logger.error(f"Invalid request_id supplied: {e}")
+                explicit_request_id = None
         account_id = "unknown"
         permission_set = "unknown"
 

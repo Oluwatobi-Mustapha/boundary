@@ -53,6 +53,9 @@ class _FakeTable:
         self.put_item_calls.append(kwargs)
         return {}
 
+    def get_item(self, **kwargs):
+        return {}
+
 
 class _FakeDynamo:
     def __init__(self, table):
@@ -184,3 +187,39 @@ def test_save_request_converts_float_fields_to_decimal(monkeypatch):
     assert isinstance(item["updated_at"], Decimal)
     assert isinstance(item["expires_at"], Decimal)
     assert isinstance(item["evaluated_at"], Decimal)
+
+    # Verify that save_request uses a condition expression to prevent overwrites
+    call_kwargs = table.put_item_calls[-1]
+    assert call_kwargs.get("ConditionExpression") == "attribute_not_exists(request_id)"
+
+
+def test_save_request_rejects_duplicate_request_id(monkeypatch):
+    """save_request must raise ValueError when the request_id already exists."""
+    store, table = _build_store(monkeypatch)
+
+    # Simulate ConditionalCheckFailedException from DynamoDB
+    from botocore.exceptions import ClientError
+
+    def _put_item_conflict(**_kwargs):
+        raise ClientError(
+            {"Error": {"Code": "ConditionalCheckFailedException", "Message": "exists"}},
+            "PutItem",
+        )
+
+    table.put_item = _put_item_conflict
+
+    req = AccessRequest(
+        request_id="req-duplicate0000001",
+        principal_id="user-1",
+        principal_type="USER",
+        permission_set_arn="arn:aws:sso:::permissionSet/ssoins-123/ps-123",
+        permission_set_name="ReadOnlyAccess",
+        account_id="123456789012",
+        instance_arn="arn:aws:sso:::instance/ssoins-123",
+        rule_id="rule-1",
+        requested_at=1700000000.1,
+        expires_at=1700003600.4,
+    )
+
+    with pytest.raises(ValueError, match="already exists"):
+        store.save_request(req)

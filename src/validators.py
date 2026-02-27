@@ -53,6 +53,34 @@ def validate_account_id(account_id: str) -> str:
     return account_id
 
 
+REQUEST_ID_PATTERN = re.compile(r'^req-[a-f0-9]{16}$')
+
+
+def validate_request_id(request_id: str) -> str:
+    """
+    Validates that a request ID matches the expected format: req-<16 hex chars>.
+
+    Args:
+        request_id: The request ID to validate
+
+    Returns:
+        Validated request ID
+
+    Raises:
+        ValueError: If request ID format is invalid
+    """
+    if not request_id:
+        raise ValueError("Request ID cannot be empty")
+
+    if not REQUEST_ID_PATTERN.match(request_id):
+        raise ValueError(
+            f"Invalid request ID format. Expected 'req-' followed by "
+            f"16 hex characters, got: {request_id}"
+        )
+
+    return request_id
+
+
 def validate_arn(arn: str, resource_type: str | None = None) -> str:
     """
     Validates AWS ARN format.

@@ -8,7 +8,7 @@ import os
 # Add src to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.validators import validate_duration, validate_account_id, validate_arn
+from src.validators import validate_duration, validate_account_id, validate_arn, validate_request_id
 
 
 class TestDurationValidation:
@@ -111,6 +111,43 @@ class TestARNValidation:
         
         with pytest.raises(ValueError, match="Expected ARN for iam"):
             validate_arn(sso_arn, "iam")
+
+
+class TestRequestIDValidation:
+    """Tests for request_id validation to prevent audit record overwrite"""
+
+    def test_valid_request_id(self):
+        assert validate_request_id("req-0123456789abcdef") == "req-0123456789abcdef"
+        assert validate_request_id("req-abcdef0123456789") == "req-abcdef0123456789"
+
+    def test_empty_request_id_rejected(self):
+        with pytest.raises(ValueError, match="cannot be empty"):
+            validate_request_id("")
+
+    def test_wrong_prefix_rejected(self):
+        with pytest.raises(ValueError, match="Invalid request ID format"):
+            validate_request_id("abc-0123456789abcdef")
+
+    def test_too_short_hex_rejected(self):
+        with pytest.raises(ValueError, match="Invalid request ID format"):
+            validate_request_id("req-0123456789abcde")
+
+    def test_too_long_hex_rejected(self):
+        with pytest.raises(ValueError, match="Invalid request ID format"):
+            validate_request_id("req-0123456789abcdef0")
+
+    def test_uppercase_hex_rejected(self):
+        with pytest.raises(ValueError, match="Invalid request ID format"):
+            validate_request_id("req-0123456789ABCDEF")
+
+    def test_injection_attempt_rejected(self):
+        with pytest.raises(ValueError, match="Invalid request ID format"):
+            validate_request_id("req-'; DROP TABLE--")
+
+    def test_existing_request_id_format_rejected(self):
+        """Arbitrary strings that don't match the format are rejected"""
+        with pytest.raises(ValueError, match="Invalid request ID format"):
+            validate_request_id("some-arbitrary-id")
 
 
 if __name__ == "__main__":
