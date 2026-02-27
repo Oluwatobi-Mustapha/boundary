@@ -53,6 +53,44 @@ def validate_account_id(account_id: str) -> str:
     return account_id
 
 
+_REQUEST_ID_RE = re.compile(r'^req-[0-9a-f]{16}$')
+
+REQUEST_ID_MAX_LENGTH = 20  # "req-" (4) + 16 hex chars
+
+
+def validate_request_id(request_id: str) -> str:
+    """
+    Validates that a request_id matches the expected internal format.
+
+    The canonical format is ``req-<16 hex chars>`` (e.g. ``req-a1b2c3d4e5f67890``).
+    Rejecting anything else prevents external callers from injecting crafted
+    primary keys that could overwrite existing DynamoDB audit records.
+
+    Args:
+        request_id: The request ID string to validate.
+
+    Returns:
+        The validated request_id (unchanged).
+
+    Raises:
+        ValueError: If the format does not match ``req-[0-9a-f]{16}``.
+    """
+    if not request_id:
+        raise ValueError("Request ID cannot be empty")
+
+    if len(request_id) > REQUEST_ID_MAX_LENGTH:
+        raise ValueError(
+            f"Request ID too long (max {REQUEST_ID_MAX_LENGTH} chars), got {len(request_id)}"
+        )
+
+    if not _REQUEST_ID_RE.match(request_id):
+        raise ValueError(
+            f"Invalid request ID format. Expected 'req-' followed by 16 hex characters, got: {request_id}"
+        )
+
+    return request_id
+
+
 def validate_arn(arn: str, resource_type: str | None = None) -> str:
     """
     Validates AWS ARN format.

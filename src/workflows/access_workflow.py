@@ -24,7 +24,7 @@ from models.request_states import (
     STATE_PENDING_APPROVAL,
     canonicalize_status,
 )
-from validators import validate_duration, validate_account_id
+from validators import validate_duration, validate_account_id, validate_request_id
 
 logger = logging.getLogger(__name__)
 
@@ -345,7 +345,9 @@ class SlackWorkflow:
         slack_user_id = event.get('user_id')
         command_text = event.get('command_text', '')
         response_url = event.get('response_url')
-        request_id = str(event.get("request_id", "")).strip() or f"req-{uuid.uuid4().hex[:16]}"
+        # Always generate request_id internally to preserve audit integrity.
+        # Accepting caller-supplied IDs could allow overwriting existing records.
+        request_id = f"req-{uuid.uuid4().hex[:16]}"
         account_id = "unknown"
         permission_set = "unknown"
 
@@ -590,9 +592,15 @@ class SlackWorkflow:
             )
 
     def process_approval_action(self, event: Dict[str, Any]) -> None:
-        request_id = event.get("request_id", "")
+        raw_request_id = event.get("request_id", "")
         action = str(event.get("action", "")).lower()
         approver_slack_user_id = event.get("approver_slack_user_id", "")
+
+        try:
+            request_id = validate_request_id(str(raw_request_id).strip())
+        except ValueError:
+            logger.error("Invalid request_id format in approval action: %r", raw_request_id)
+            return
 
         if action not in {"approve", "deny"} or not request_id or not approver_slack_user_id:
             logger.error("Invalid approval action payload")

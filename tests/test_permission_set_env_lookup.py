@@ -188,8 +188,8 @@ class TestPermissionSetEnvLookupPrefixed:
         "PERMISSION_SET_ReadOnlyAccess": "arn:aws:sso:::permissionSet/ssoins-123/ps-ro",
         "SSO_INSTANCE_ARN": "arn:aws:sso:::instance/ssoins-123",
     }, clear=False)
-    def test_request_id_passed_in_event_is_preserved(self):
-        """Workflow must persist caller-provided request_id (used by SQS events and CLI)."""
+    def test_request_id_from_event_is_ignored(self):
+        """P2 Fix: Caller-supplied request_id must be ignored; ID is always generated internally."""
         wf, slack, identity, engine, orgs, state = _build_workflow()
 
         slack.get_user_email.return_value = "dev@example.com"
@@ -209,12 +209,15 @@ class TestPermissionSetEnvLookupPrefixed:
         engine.evaluate.return_value = decision
 
         event = _base_event()
-        event["request_id"] = "req-cli-test-123"
+        event["request_id"] = "req-attacker-craft"
         wf.process_request(event)
 
         assert state.save_request.called
         saved_request = state.save_request.call_args[0][0]
-        assert saved_request.request_id == "req-cli-test-123"
+        # The caller-supplied ID must NOT be used; an internally generated one is used instead
+        assert saved_request.request_id != "req-attacker-craft"
+        assert saved_request.request_id.startswith("req-")
+        assert len(saved_request.request_id) == 20  # "req-" + 16 hex chars
 
     @patch.dict(os.environ, {
         "AWS_SECRET_ACCESS_KEY": "super-secret-key",
