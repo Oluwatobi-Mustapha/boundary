@@ -83,34 +83,28 @@ cp terraform/live/envs/dev/terraform.tfvars.example terraform/live/envs/dev/terr
 - `boundary_secrets.PROD_OU_ID`
 - `boundary_secrets.AWS_SSO_START_URL`
 - `boundary_secrets.AUDIT_API_PRINCIPAL_MAP` (explicit caller ARNs)
+- `permission_sets` contains the exact role names you will request from Slack
+  (default keys: `ReadOnlyAccess`, `AdministratorAccess`, `PowerUserAccess`)
 
 ### 3. Apply
 
-Navigate to environment directory:
-
 ```bash
-cd terraform/live/envs/dev
-```
-
-Run Terraform workflow:
-
-```bash
-terraform init
-terraform plan -out=tfplan
-terraform apply tfplan
-```
-
-Return to previous directory:
-
-```bash
-cd -
+terraform -chdir=terraform/live/envs/dev init
+terraform -chdir=terraform/live/envs/dev plan -out=tfplan
+terraform -chdir=terraform/live/envs/dev apply tfplan
 ```
 
 ### 4. Useful outputs
 
 ```bash
 terraform -chdir=terraform/live/envs/dev output -json
+terraform -chdir=terraform/live/envs/dev output -raw slack_webhook_url
+terraform -chdir=terraform/live/envs/dev output -raw audit_dashboard_url
 ```
+
+Notes:
+- Re-running the same `plan/apply` commands is the standard way to deploy updates.
+- This stack packages lambdas together, so a deploy updates Boundary service lambdas in one bundle.
 
 ---
 
@@ -139,13 +133,20 @@ Invite app to approval channel:
 /boundary <AccountID> <PermissionSet> <Hours> [TicketID]
 ```
 
+`PermissionSet` must match one of your configured `permission_sets` keys in Terraform.
+
 Accepted forms:
 
 ```text
 /boundary 123456789012 ReadOnlyAccess 0.5
+/boundary 123456789012 ReadOnlyAccess 0.02
 /boundary request 111122223333 AdministratorAccess 0.5 INC-12345
 /boundary 111122223333 AdministratorAccess 0.5 ticket INC-12345
 ```
+
+Notes:
+- `0.02` hours is ~72 seconds (useful for fast revocation demos).
+- Approval cannot be performed by the same Slack user who submitted the request.
 
 ---
 
@@ -157,7 +158,25 @@ Accepted forms:
 PYTHONPATH=src python3 demo.py --debug
 ```
 
-### Live request path (operator testing)
+### Unified lifecycle CLI (Slack-equivalent flow)
+
+```bash
+./boundary --help
+./boundary request U12345678 123456789012 ReadOnlyAccess 0.5
+./boundary status req-cli-abc123
+./boundary approve req-cli-abc123 U23456789
+./boundary deny req-cli-abc123 U23456789
+./boundary revoke req-cli-abc123
+./boundary janitor --dry-run
+```
+
+One-liner to use `boundary` like a normal installed CLI:
+
+```bash
+mkdir -p ~/.local/bin && ln -sf "$PWD/boundary" ~/.local/bin/boundary && export PATH="$HOME/.local/bin:$PATH"
+```
+
+### Legacy live request path (operator testing)
 
 ```bash
 python3 src/main.py --help
@@ -212,6 +231,10 @@ python3 scripts/dashboard_proxy.py \
   --dashboard-url "$(terraform -chdir=terraform/live/envs/dev output -raw audit_dashboard_url)" \
   --open
 ```
+
+Dashboard quick tips:
+- Use `Request ID` filter for direct lookup of a single request.
+- Theme preference is persisted in browser storage (dark/light toggle).
 
 ---
 
