@@ -11,6 +11,12 @@ sys.path.insert(0, SRC)
 import audit_dashboard
 
 
+def test_short_hash_truncates_long_values():
+    full = "f5c82f2518b3fcb397bd69a953e49fe4e6c8fa128c09ba1d304675a2026e573a"
+    assert audit_dashboard._short_hash(full) == "f5c82f2518b3...026e573a"
+    assert audit_dashboard._short_hash("abc123") == "abc123"
+
+
 class _FakeStateStore:
     def __init__(self, table_name):
         self.table_name = table_name
@@ -57,6 +63,17 @@ class _FakeStateStore:
         return {"items": fixtures.get(status, []), "next_key": None}
 
     def get_request(self, request_id):
+        if request_id == "req-pending-1":
+            return {
+                "request_id": "req-pending-1",
+                "status": "PENDING_APPROVAL",
+                "account_id": "111122223333",
+                "permission_set_name": "AdministratorAccess",
+                "requester_slack_user_id": "UREQ2",
+                "created_at": 1700000000,
+                "reason": "Approval required by policy",
+                "policy_hash": "pol-2",
+            }
         if request_id == "req-detail-1":
             return {
                 "request_id": "req-detail-1",
@@ -122,6 +139,19 @@ def test_dashboard_home_renders(monkeypatch):
     assert "Boundary Audit Dashboard" in resp["body"]
     assert "Pending Approvals" in resp["body"]
     assert "req-pending-1" in resp["body"]
+    assert 'name="request_id"' in resp["body"]
+    assert 'name="requester_slack_user_id"' not in resp["body"]
+    assert "themeToggle" in resp["body"]
+    assert "scrollTopBtn" in resp["body"]
+    assert "scrollBottomBtn" in resp["body"]
+    assert 'class="copy-btn"' in resp["body"]
+    assert 'class="reason-text"' in resp["body"]
+    assert 'class="table-wrap"' in resp["body"]
+    assert 'id="lastRefreshed"' in resp["body"]
+    assert 'id="autoRefreshToggle"' in resp["body"]
+    assert 'id="copyToast"' in resp["body"]
+    assert 'id="requestIdInput"' in resp["body"]
+    assert "Pending Approvals (SLA Focus) (1)" in resp["body"]
 
 
 def test_dashboard_denies_unmapped_principal(monkeypatch):
@@ -149,6 +179,8 @@ def test_dashboard_detail_in_scope(monkeypatch):
     assert resp["statusCode"] == 200
     assert "Request req-detail-1" in resp["body"]
     assert "INC-12345" in resp["body"]
+    assert "2023-11-14T22:13:20Z" in resp["body"]
+    assert "2023-11-14T22:15:00Z" in resp["body"]
 
 
 def test_dashboard_detail_hidden_when_out_of_scope(monkeypatch):
@@ -207,6 +239,53 @@ def test_dashboard_filters_apply(monkeypatch):
     assert "req-active-1" not in resp["body"]
 
 
+def test_dashboard_request_id_filter_direct_lookup(monkeypatch):
+    _set_principal_map(
+        monkeypatch,
+        {
+            "arn:aws:iam::123456789012:role/TestViewer": {
+                "roles": ["viewer"],
+                "accounts": ["111122223333"],
+                "requesters": ["*"],
+                "permission_sets": ["*"],
+                "statuses": ["*"],
+            }
+        },
+    )
+    event = _event("/dashboard")
+    event["queryStringParameters"] = {"request_id": "req-pending-1"}
+    resp = audit_dashboard.lambda_handler(event, None)
+    assert resp["statusCode"] == 200
+    assert "req-pending-1" in resp["body"]
+    assert "req-active-1" not in resp["body"]
+    assert "req-denied-1" not in resp["body"]
+    assert "<h2>Active Access (" not in resp["body"]
+    assert "<h2>Recent Revocations (" not in resp["body"]
+    assert "<h2>Denials by Reason (" not in resp["body"]
+
+
+def test_dashboard_request_id_filter_no_match_renders_focus_empty_state(monkeypatch):
+    _set_principal_map(
+        monkeypatch,
+        {
+            "arn:aws:iam::123456789012:role/TestViewer": {
+                "roles": ["viewer"],
+                "accounts": ["111122223333"],
+                "requesters": ["*"],
+                "permission_sets": ["*"],
+                "statuses": ["*"],
+            }
+        },
+    )
+    event = _event("/dashboard")
+    event["queryStringParameters"] = {"request_id": "req-not-found"}
+    resp = audit_dashboard.lambda_handler(event, None)
+    assert resp["statusCode"] == 200
+    assert "No Matching Request" in resp["body"]
+    assert "req-not-found" in resp["body"]
+    assert ">Clear filters<" in resp["body"]
+
+
 def test_dashboard_invalid_filter_returns_400(monkeypatch):
     _set_principal_map(
         monkeypatch,
@@ -225,3 +304,23 @@ def test_dashboard_invalid_filter_returns_400(monkeypatch):
     resp = audit_dashboard.lambda_handler(event, None)
     assert resp["statusCode"] == 400
     assert "Bad request" in resp["body"]
+
+
+def test_dashboard_request_id_too_long_returns_400(monkeypatch):
+    _set_principal_map(
+        monkeypatch,
+        {
+            "arn:aws:iam::123456789012:role/TestViewer": {
+                "roles": ["viewer"],
+                "accounts": ["*"],
+                "requesters": ["*"],
+                "permission_sets": ["*"],
+                "statuses": ["*"],
+            }
+        },
+    )
+    event = _event("/dashboard")
+    event["queryStringParameters"] = {"request_id": "x" * 129}
+    resp = audit_dashboard.lambda_handler(event, None)
+    assert resp["statusCode"] == 400
+    assert "request_id is too long" in resp["body"]

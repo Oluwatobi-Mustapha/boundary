@@ -2,12 +2,13 @@ import urllib.request
 import urllib.error
 import json
 import logging
-import random
+import secrets
 import time
 import os
 import uuid
 import boto3
-from typing import Dict, Any, Optional
+from difflib import SequenceMatcher, get_close_matches
+from typing import Dict, Any, Optional, Tuple
 
 from adapters.slack_adapter import SlackAdapter, SlackAPIError
 from adapters.identity_store_adapter import IdentityStoreAdapter, IdentityStoreError
@@ -23,7 +24,7 @@ from models.request_states import (
     STATE_PENDING_APPROVAL,
     canonicalize_status,
 )
-from validators import validate_duration, validate_account_id
+from validators import validate_duration, validate_account_id, validate_request_id
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,74 @@ class SlackWorkflow:
     def _validate_response_url(self, url: str) -> None:
         if not url or not url.startswith("https://hooks.slack.com/"):
             raise WorkflowError("Invalid Slack response URL")
+
+    @staticmethod
+    def _permission_set_env_map() -> Dict[str, str]:
+        mapping: Dict[str, str] = {}
+        prefix = "PERMISSION_SET_"
+        for key, value in os.environ.items():
+            if not key.startswith(prefix):
+                continue
+            name = key[len(prefix):].strip()
+            if name:
+                mapping[name] = value.strip()
+        return mapping
+
+    def _resolve_permission_set_mapping(self, requested_permission_set: str) -> Tuple[str, str]:
+        requested = (requested_permission_set or "").strip()
+        if not requested:
+            raise WorkflowError("Permission set name is empty.")
+
+        configured = self._permission_set_env_map()
+        if not configured:
+            raise WorkflowError(
+                "Configuration Error: No PERMISSION_SET_* mappings are configured. Contact your admin."
+            )
+
+        # Exact match first.
+        if requested in configured:
+            return requested, configured[requested]
+
+        # Case-insensitive exact match.
+        canonical_by_lower: Dict[str, str] = {}
+        for name in configured:
+            lowered = name.lower()
+            canonical_by_lower.setdefault(lowered, name)
+        requested_lower = requested.lower()
+        if requested_lower in canonical_by_lower:
+            canonical = canonical_by_lower[requested_lower]
+            if canonical != requested:
+                logger.warning(
+                    "Normalized permission set token from '%s' to '%s'.",
+                    requested,
+                    canonical,
+                )
+            return canonical, configured[canonical]
+
+        # Conservative typo autocorrect: only when exactly one strong candidate exists.
+        candidates = get_close_matches(requested_lower, list(canonical_by_lower.keys()), n=2, cutoff=0.80)
+        if len(candidates) == 1:
+            candidate_lower = candidates[0]
+            similarity = SequenceMatcher(None, requested_lower, candidate_lower).ratio()
+            if similarity >= 0.90:
+                canonical = canonical_by_lower[candidate_lower]
+                logger.warning(
+                    "Auto-corrected permission set token from '%s' to '%s' (similarity=%.2f).",
+                    requested,
+                    canonical,
+                    similarity,
+                )
+                return canonical, configured[canonical]
+
+        suggestion = ""
+        if candidates:
+            suggestion = f" Did you mean '{canonical_by_lower[candidates[0]]}'?"
+        available = ", ".join(sorted(configured.keys()))
+        raise WorkflowError(
+            f"Configuration Error: Could not find the true AWS ARN for '{requested}'. "
+            f"Contact your admin — no ARN mapping found for '{requested}'."
+            f"{suggestion} Available permission sets: {available}"
+        )
 
     def _send_slack_reply(
         self,
@@ -118,7 +187,7 @@ class SlackWorkflow:
                     return
 
                 backoff = 2 ** (attempt - 1)
-                jitter = random.uniform(0, backoff * 0.5)
+                jitter = secrets.SystemRandom().uniform(0, backoff * 0.5)
                 time.sleep(backoff + jitter)
 
             except urllib.error.URLError:
@@ -127,7 +196,7 @@ class SlackWorkflow:
                     return
 
                 backoff = 2 ** (attempt - 1)
-                jitter = random.uniform(0, backoff * 0.5)
+                jitter = secrets.SystemRandom().uniform(0, backoff * 0.5)
                 time.sleep(backoff + jitter)
 
     @staticmethod
@@ -276,6 +345,9 @@ class SlackWorkflow:
         slack_user_id = event.get('user_id')
         command_text = event.get('command_text', '')
         response_url = event.get('response_url')
+        # Always generate request_id internally to preserve audit integrity.
+        # Accepting caller-supplied IDs could allow overwriting existing records.
+        request_id = f"req-{uuid.uuid4().hex[:16]}"
         account_id = "unknown"
         permission_set = "unknown"
 
@@ -340,13 +412,7 @@ class SlackWorkflow:
 
             # Use a dedicated prefix to prevent user-controlled input from reading
             # arbitrary environment variables (e.g. AWS_SECRET_ACCESS_KEY).
-            env_key = f"PERMISSION_SET_{permission_set}"
-            permission_set_arn = os.environ.get(env_key)
-            if not permission_set_arn:
-                raise WorkflowError(
-                    f"Configuration Error: Could not find the true AWS ARN for '{permission_set}'. "
-                    f"Contact your admin — no ARN mapping found for '{permission_set}'."
-                )
+            permission_set, permission_set_arn = self._resolve_permission_set_mapping(permission_set)
 
             # 3. Policy Evaluation
             aws_context = self.orgs.build_account_context(account_id)
@@ -358,7 +424,7 @@ class SlackWorkflow:
 
             for group_id in group_ids:
                 candidate = AccessRequest(
-                    request_id=f"req-{uuid.uuid4().hex[:16]}",
+                    request_id=request_id,
                     principal_id=group_id,
                     principal_type="GROUP",
                     permission_set_arn=permission_set_arn,
@@ -389,7 +455,7 @@ class SlackWorkflow:
                 denied_request = first_denied_candidate
                 if denied_request is None:
                     denied_request = AccessRequest(
-                        request_id=f"req-{uuid.uuid4().hex[:16]}",
+                        request_id=request_id,
                         principal_id=aws_user_id,
                         principal_type="USER",
                         permission_set_arn=permission_set_arn,
@@ -526,9 +592,15 @@ class SlackWorkflow:
             )
 
     def process_approval_action(self, event: Dict[str, Any]) -> None:
-        request_id = event.get("request_id", "")
+        raw_request_id = event.get("request_id", "")
         action = str(event.get("action", "")).lower()
         approver_slack_user_id = event.get("approver_slack_user_id", "")
+
+        try:
+            request_id = validate_request_id(str(raw_request_id).strip())
+        except ValueError:
+            logger.error("Invalid request_id format in approval action: %r", raw_request_id)
+            return
 
         if action not in {"approve", "deny"} or not request_id or not approver_slack_user_id:
             logger.error("Invalid approval action payload")

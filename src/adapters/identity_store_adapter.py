@@ -3,7 +3,7 @@ import botocore.exceptions
 import logging
 import time
 import re
-import random
+import secrets
 from collections import OrderedDict
 from typing import Tuple
 
@@ -113,7 +113,7 @@ class IdentityStoreAdapter:
                     
                     # Exponential backoff with jitter to prevent thundering herd
                     backoff = 2 ** (attempt - 1)
-                    jitter = random.uniform(0, backoff * 0.5)  # AWS recommended: 0-50% jitter
+                    jitter = secrets.SystemRandom().uniform(0, backoff * 0.5)
                     sleep_time = backoff + jitter
                     
                     logger.warning(
@@ -174,7 +174,7 @@ class IdentityStoreAdapter:
                         raise IdentityStoreError("AWS throttling exceeded max retries")
                     
                     backoff = 2 ** (attempt - 1)
-                    jitter = random.uniform(0, backoff * 0.5)
+                    jitter = secrets.SystemRandom().uniform(0, backoff * 0.5)
                     sleep_time = backoff + jitter
                     
                     logger.warning(
