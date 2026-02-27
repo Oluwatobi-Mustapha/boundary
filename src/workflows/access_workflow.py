@@ -282,7 +282,7 @@ class SlackWorkflow:
                 validate_request_id(explicit_request_id)
             except ValueError as e:
                 logger.error(f"Invalid request_id supplied: {e}")
-                explicit_request_id = None
+                raise WorkflowError(f"Invalid request_id supplied: {e}")
         account_id = "unknown"
         permission_set = "unknown"
 
