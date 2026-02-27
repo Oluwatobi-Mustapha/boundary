@@ -78,7 +78,7 @@ class SlackWorkflow:
                 continue
             name = key[len(prefix):].strip()
             if name:
-                mapping[name] = value
+                mapping[name] = value.strip()
         return mapping
 
     def _resolve_permission_set_mapping(self, requested_permission_set: str) -> Tuple[str, str]:
