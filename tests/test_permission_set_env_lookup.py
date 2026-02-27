@@ -185,6 +185,38 @@ class TestPermissionSetEnvLookupPrefixed:
         assert call_kwargs[1]["permission_set_arn"] == "arn:aws:sso:::permissionSet/ssoins-123/ps-ro"
 
     @patch.dict(os.environ, {
+        "PERMISSION_SET_ReadOnlyAccess": "arn:aws:sso:::permissionSet/ssoins-123/ps-ro",
+        "SSO_INSTANCE_ARN": "arn:aws:sso:::instance/ssoins-123",
+    }, clear=False)
+    def test_request_id_passed_in_event_is_preserved(self):
+        """Workflow must persist caller-provided request_id (used by SQS events and CLI)."""
+        wf, slack, identity, engine, orgs, state = _build_workflow()
+
+        slack.get_user_email.return_value = "dev@example.com"
+        identity.get_user_id_by_email.return_value = "aws-user-id"
+        identity.get_user_group_memberships.return_value = ["group-1"]
+
+        decision = MagicMock()
+        decision.effect = "ALLOW"
+        decision.approval_required = False
+        decision.rule_id = "rule-1"
+        decision.reason = "allowed"
+        decision.effective_duration_hours = 1.0
+        decision.effective_expires_at = None
+        decision.policy_hash = "abc"
+        decision.engine_version = "1.0"
+        decision.evaluated_at = 1000.0
+        engine.evaluate.return_value = decision
+
+        event = _base_event()
+        event["request_id"] = "req-cli-test-123"
+        wf.process_request(event)
+
+        assert state.save_request.called
+        saved_request = state.save_request.call_args[0][0]
+        assert saved_request.request_id == "req-cli-test-123"
+
+    @patch.dict(os.environ, {
         "AWS_SECRET_ACCESS_KEY": "super-secret-key",
         "SSO_INSTANCE_ARN": "arn:aws:sso:::instance/ssoins-123",
     }, clear=False)
@@ -237,3 +269,35 @@ class TestPermissionSetEnvLookupPrefixed:
 
         # Without PERMISSION_SET_ReadOnlyAccess, provisioning should NOT happen
         orgs.assign_user_to_account.assert_not_called()
+
+    @patch.dict(os.environ, {
+        "PERMISSION_SET_AdministratorAccess": "arn:aws:sso:::permissionSet/ssoins-123/ps-admin",
+        "SSO_INSTANCE_ARN": "arn:aws:sso:::instance/ssoins-123",
+    }, clear=False)
+    def test_typo_in_permission_set_is_autocorrected_to_configured_mapping(self):
+        """Common typo should resolve to configured mapping instead of hard-failing."""
+        wf, slack, identity, engine, orgs, state = _build_workflow()
+
+        slack.get_user_email.return_value = "dev@example.com"
+        identity.get_user_id_by_email.return_value = "aws-user-id"
+        identity.get_user_group_memberships.return_value = ["group-1"]
+
+        decision = MagicMock()
+        decision.effect = "ALLOW"
+        decision.approval_required = False
+        decision.rule_id = "rule-1"
+        decision.reason = "allowed"
+        decision.effective_duration_hours = 1.0
+        decision.effective_expires_at = None
+        decision.policy_hash = "abc"
+        decision.engine_version = "1.0"
+        decision.evaluated_at = 1000.0
+        engine.evaluate.return_value = decision
+
+        # Missing the second "i" ("AdmnistratorAccess") should autocorrect.
+        event = _base_event(perm_set="AdmnistratorAccess")
+        wf.process_request(event)
+
+        orgs.assign_user_to_account.assert_called_once()
+        call_kwargs = orgs.assign_user_to_account.call_args[1]
+        assert call_kwargs["permission_set_arn"] == "arn:aws:sso:::permissionSet/ssoins-123/ps-admin"
