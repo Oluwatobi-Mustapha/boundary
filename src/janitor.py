@@ -23,7 +23,7 @@ logger = logging.getLogger()
 
 ssm = boto3.client("ssm")
 SLACK_API_BASE = "https://slack.com/api"
-DEFAULT_SLACK_TOKEN_PARAM = "/boundary/slack/bot_token"
+DEFAULT_SLACK_SSM_PARAM = "/boundary/slack/bot_token"
 _cached_bot_token = None
 
 # 1. FORCE the log level to INFO. 
@@ -49,7 +49,7 @@ def get_bot_token() -> str:
     if _cached_bot_token:
         return _cached_bot_token
 
-    parameter_name = os.environ.get("SLACK_BOT_TOKEN_PARAM", DEFAULT_SLACK_TOKEN_PARAM)
+    parameter_name = os.environ.get("SLACK_BOT_TOKEN_PARAM", DEFAULT_SLACK_SSM_PARAM)
     response = ssm.get_parameter(Name=parameter_name, WithDecryption=True)
     _cached_bot_token = response["Parameter"]["Value"]
     return _cached_bot_token

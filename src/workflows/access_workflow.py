@@ -2,7 +2,7 @@ import urllib.request
 import urllib.error
 import json
 import logging
-import random
+import secrets
 import time
 import os
 import uuid
@@ -187,7 +187,7 @@ class SlackWorkflow:
                     return
 
                 backoff = 2 ** (attempt - 1)
-                jitter = random.uniform(0, backoff * 0.5)
+                jitter = secrets.SystemRandom().uniform(0, backoff * 0.5)
                 time.sleep(backoff + jitter)
 
             except urllib.error.URLError:
@@ -196,7 +196,7 @@ class SlackWorkflow:
                     return
 
                 backoff = 2 ** (attempt - 1)
-                jitter = random.uniform(0, backoff * 0.5)
+                jitter = secrets.SystemRandom().uniform(0, backoff * 0.5)
                 time.sleep(backoff + jitter)
 
     @staticmethod
