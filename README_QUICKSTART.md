@@ -29,8 +29,8 @@ terraform -chdir=terraform/live/envs/dev apply tfplan
 
 5. Submit test requests in Slack:
 ```text
-/boundary 220065406396 ReadOnlyAccess 0.02
-/boundary request 220065406396 AdministratorAccess 0.5 INC-12345
+/boundary 123456789012 ReadOnlyAccess 0.02
+/boundary request 111122223333 AdministratorAccess 0.5 INC-12345
 ```
 
 6. Open audit dashboard (signed local proxy):
