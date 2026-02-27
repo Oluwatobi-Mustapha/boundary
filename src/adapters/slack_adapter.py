@@ -3,7 +3,7 @@ import urllib.error
 import json
 import time
 import logging
-import random
+import secrets
 import re
 from collections import OrderedDict
 from typing import Tuple
@@ -155,7 +155,7 @@ class SlackAdapter:
                 logger.warning(f"Network error, retrying... (Attempt {attempt}/{max_retries})")
                 # Exponential backoff with jitter to prevent thundering herd
                 backoff = 2 ** (attempt - 1)
-                jitter = random.uniform(0, backoff * 0.5)
+                jitter = secrets.SystemRandom().uniform(0, backoff * 0.5)
                 time.sleep(backoff + jitter)
                 continue
 
