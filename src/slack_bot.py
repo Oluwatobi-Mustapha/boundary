@@ -187,7 +187,7 @@ def lambda_handler(event, context):
         }
 
     # Generate unique request ID for tracing slash command requests
-    request_id = str(uuid.uuid4())
+    request_id = f"req-{uuid.uuid4().hex[:16]}"
 
     order_ticket = {
         "request_type": "access_request",

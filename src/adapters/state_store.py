@@ -93,7 +93,7 @@ class StateStore:
     def save_request(self, request: AccessRequest):
         """
         Writes a new access request to DynamoDB.
-        Idempotent: If request_id exists, it overwrites (useful for status updates).
+        Raises ValueError if a record with the same request_id already exists.
         """
         now = time.time()
         status = canonicalize_status(request.status)
@@ -150,8 +150,16 @@ class StateStore:
             item["revoked_at"] = self._float_to_decimal(request.revoked_at)
 
         try:
-            self.table.put_item(Item=item)
+            self.table.put_item(
+                Item=item,
+                ConditionExpression="attribute_not_exists(request_id)",
+            )
         except ClientError as e:
+            if e.response.get("Error", {}).get("Code") == "ConditionalCheckFailedException":
+                raise ValueError(
+                    f"Request {request.request_id} already exists. "
+                    f"Cannot overwrite an existing audit record."
+                )
             raise Exception(f"Failed to save state to DynamoDB: {e}")
 
     def update_status(
