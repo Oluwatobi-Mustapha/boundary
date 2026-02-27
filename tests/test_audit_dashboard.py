@@ -259,9 +259,9 @@ def test_dashboard_request_id_filter_direct_lookup(monkeypatch):
     assert "req-pending-1" in resp["body"]
     assert "req-active-1" not in resp["body"]
     assert "req-denied-1" not in resp["body"]
-    assert "<h2>Active Access</h2>" not in resp["body"]
-    assert "<h2>Recent Revocations</h2>" not in resp["body"]
-    assert "<h2>Denials by Reason</h2>" not in resp["body"]
+    assert "<h2>Active Access (" not in resp["body"]
+    assert "<h2>Recent Revocations (" not in resp["body"]
+    assert "<h2>Denials by Reason (" not in resp["body"]
 
 
 def test_dashboard_request_id_filter_no_match_renders_focus_empty_state(monkeypatch):
