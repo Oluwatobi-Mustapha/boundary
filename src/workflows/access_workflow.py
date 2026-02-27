@@ -276,6 +276,7 @@ class SlackWorkflow:
         slack_user_id = event.get('user_id')
         command_text = event.get('command_text', '')
         response_url = event.get('response_url')
+        explicit_request_id = event.get('request_id')
         account_id = "unknown"
         permission_set = "unknown"
 
@@ -358,7 +359,7 @@ class SlackWorkflow:
 
             for group_id in group_ids:
                 candidate = AccessRequest(
-                    request_id=f"req-{uuid.uuid4().hex[:16]}",
+                    request_id=explicit_request_id or f"req-{uuid.uuid4().hex[:16]}",
                     principal_id=group_id,
                     principal_type="GROUP",
                     permission_set_arn=permission_set_arn,
@@ -389,7 +390,7 @@ class SlackWorkflow:
                 denied_request = first_denied_candidate
                 if denied_request is None:
                     denied_request = AccessRequest(
-                        request_id=f"req-{uuid.uuid4().hex[:16]}",
+                        request_id=explicit_request_id or f"req-{uuid.uuid4().hex[:16]}",
                         principal_id=aws_user_id,
                         principal_type="USER",
                         permission_set_arn=permission_set_arn,
